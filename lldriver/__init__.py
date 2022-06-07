@@ -5,10 +5,12 @@ class LLDriver():
 	DEFAULT_PID = 22336
 
 	_opDic = {
-		'FILL_REGS':    b'\x02',
+		'SET_SR' :  b'\x02',
+		'CLK'    :  b'\x03',
+		'GET_CTL':  b'\x04',
 
-		'DBG:LED':      b'\x10',
-		'DBG:SHIFTREG': b'\x11',
+		'DBG:PING': b'\x10',
+		'DBG:LED' : b'\x11',
 	}
 
 	def __init__(self, pid = DEFAULT_PID):
