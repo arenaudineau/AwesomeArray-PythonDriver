@@ -35,7 +35,11 @@ class LLDriver():
 			self.ser.close()
 
 	def list_ports():
-		return list(serial.tools.list_ports.comports())
+		return serial.tools.list_ports.comports()
+
+	def print_ports():
+		for port in serial.tools.list_ports.comports():
+			print(port, "| PID: ", port.pid)
 
 	def commands(name = None):
 		if name is None:
