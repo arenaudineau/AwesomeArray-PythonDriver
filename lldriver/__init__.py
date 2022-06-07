@@ -2,6 +2,8 @@ import serial
 import serial.tools.list_ports
 
 class LLDriver():
+	DEFAULT_PID = 22336
+
 	_opDic = {
 		'FILL_REGS':    b'\x02',
 
@@ -9,21 +11,21 @@ class LLDriver():
 		'DBG:SHIFTREG': b'\x11',
 	}
 
-	def __init__(self, st_port=None):
+	def __init__(self, pid = DEFAULT_PID):
 		self.ser = serial.Serial()
 		self.ser.baudrate = 921600
 
 		ports = serial.tools.list_ports.comports()
+		st_port = None
 
-		if st_port is None:
 			for port in ports:
-				# If there are multiple serial ports, we'll just use the first one
-				if port.description == "STMicroelectronics STLink Virtual COM Port":
+			# If there are multiple serial ports with the same PID, we just use the first one
+			if port.pid == pid:
 					st_port = port.device
 					break
 
 			if st_port is None:
-				raise Exception("No STLink found, please select one")
+			raise Exception("µc not found, please verify its connection or specify its PID")
 
 		self.ser.port = st_port
 		self.ser.open()
