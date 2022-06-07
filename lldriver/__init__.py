@@ -59,7 +59,7 @@ class LLDriver():
 		cmd += b'\xAA'
 		return self.ser.write(cmd)
 
-	def read(self, size=None, flush=True):
+	def read(self, size=None, wait_for=False, flush_rest=True):
 		"""
 		Reads from the µc.
 
@@ -72,13 +72,19 @@ class LLDriver():
 		"""
 		if size is None:
 			out = b'';
+
+			# Block until something is in
+			while not self.ser.in_waiting:
+				pass
+
+			# Read everything until the buffer is empty
 			while self.ser.in_waiting:
 				out += self.ser.read()
 			return out
 		
 		# else
 		out = self.ser.read(size)
-		if flush:
+		if flush_rest:
 			while self.ser.in_waiting:
 				self.set.read()
 		return out
