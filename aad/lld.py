@@ -10,6 +10,8 @@ BLB = 0x04
 SET   = 1
 RESET = 0
 
+CLK_ACK_NONE = 0x00
+CLK_ACK_ASK  = 0x01
 
 class LLDriver():
 	"""
