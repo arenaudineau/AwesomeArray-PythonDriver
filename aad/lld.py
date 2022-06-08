@@ -1,6 +1,16 @@
 import serial
 import serial.tools.list_ports
 
+WLE = 0x00
+WLO = 0x01
+SL  = 0x02
+BL  = 0x03
+BLB = 0x04
+
+SET   = 1
+RESET = 0
+
+
 class LLDriver():
 	"""
 	Low-Level driver for the Awesome Array Python Driver.
