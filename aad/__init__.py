@@ -4,6 +4,7 @@ import aad.lld
 class AwesomeArrayDriver():
 	def __init__(self, pin = lld.LLDriver.DEFAULT_PID):
 		self._lld = lld.LLDriver(pin)
+		self._lld.send_command('ACK_MODE', lld.ACK_SET_SR | lld.ACK_CLK, wait_for_ack=True)
 
 		# Also needs lab driver
 
@@ -25,14 +26,14 @@ class AwesomeArrayDriver():
 		WORD_SIZE = 64
 		for bit_id in reversed(range(WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr):
-				self._lld.send_command('SET_SR', sr_id, (sr_word >> bit_id) & 1)
+				self._lld.send_command('SET_SR', sr_id, (sr_word >> bit_id) & 1, wait_for_ack=True)
 
 			# As all the sr share the same clk, we pulse after setting every individual inputs
-			self._lld.send_command('CLK', lld.CLK_ACK_NONE)
+			self._lld.send_command('CLK', wait_for_ack=True)
 
 		# Reset every inputs afterward
 		for sr_id in range(len(sr)):
-				self._lld.send_command('SET_SR', sr_id, lld.RESET)
+				self._lld.send_command('SET_SR', sr_id, lld.RESET, wait_for_ack=True)
 
 	def set(self, col, row, bis=False):
 		self.__configure_sr(col, row, bis, set=True)
