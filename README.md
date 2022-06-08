@@ -8,10 +8,13 @@ This library requires:
 * `lab library` @ [GitHub Repo](https://github.com/tvbv/controle_manip)
 
 #### **Linux users only**
-`lab library` is not available on Linux but to test out only `lldriver`, you will need to add your user to the `dialout` group: `sudo usermod -aG dialout $USER`.
+`lab library` is not available on Linux but to test out only `lldriver`, you will need to add your user to the `dialout` group:  
+> sudo usermod -aG dialout $USER`
 
 ## Library Architecture
-![Library Architecture Schematic](misc/aad_arch.png)
+<p align="center">
+	<img src="misc/add_arch.png" alt="Library Architecture Diagram" />
+</p>
 
 ## Usage
 ### Low-Level Driver
