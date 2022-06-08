@@ -1,14 +1,14 @@
 import serial
 import serial.tools.list_ports
 
-WLE = 0x00
-WLO = 0x01
-SL  = 0x02
-BL  = 0x03
-BLB = 0x04
+WLE = b'\x00'
+WLO = b'\x01'
+SL  = b'\x02'
+BL  = b'\x03'
+BLB = b'\x04'
 
-SET   = 1
-RESET = 0
+SET   = b'\x01'
+RESET = b'\x00'
 
 
 class LLDriver():
