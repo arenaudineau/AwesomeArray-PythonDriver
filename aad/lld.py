@@ -10,8 +10,9 @@ BLB = 0x04
 SET   = 1
 RESET = 0
 
-CLK_ACK_NONE = 0x00
-CLK_ACK_ASK  = 0x01
+ACK_NONE   = 0x00
+ACK_SET_SR = 0x01
+ACK_CLK    = 0x02
 
 class LLDriver():
 	"""
@@ -29,9 +30,10 @@ class LLDriver():
 	DEFAULT_PID = 22336
 
 	_opDic = {
-		'SET_SR' :  b'\x02',
-		'CLK'    :  b'\x03',
-		'GET_CTL':  b'\x04',
+		'SET_SR'  : b'\x02',
+		'CLK'     : b'\x03',
+		'GET_CTL' : b'\x04',
+		'ACK_MODE': b'\x05',
 
 		'DBG:PING': b'\x10',
 		'DBG:LED' : b'\x11',
@@ -88,7 +90,7 @@ class LLDriver():
 		else:
 			return LLDriver._opDic[name]
 
-	def send_command(self, command, *kwargs):
+	def send_command(self, command, *kwargs, wait_for_ack=False):
 		"""
 		Sends a command to the µc with the optionnaly provided arguments.
 
@@ -112,7 +114,15 @@ class LLDriver():
 			else:
 				cmd += bytes(arg)
 		cmd += b'\xAA'
-		return self.ser.write(cmd)
+		
+		res = self.ser.write(cmd)
+
+		if wait_for_ack:
+			ack = self.read(2, flush_rest=False)
+			if ack != b'\xAA' + LLDriver._opDic[command]:
+				raise Exception(f"Expected ack for command '{command}', got '{ack}'")
+
+		return res
 
 	def read(self, size=None, flush_rest=True):
 		"""
