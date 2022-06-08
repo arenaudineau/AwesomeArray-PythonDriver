@@ -1,14 +1,14 @@
 import serial
 import serial.tools.list_ports
 
-WLE = b'\x00'
-WLO = b'\x01'
-SL  = b'\x02'
-BL  = b'\x03'
-BLB = b'\x04'
+WLE = 0x00
+WLO = 0x01
+SL  = 0x02
+BL  = 0x03
+BLB = 0x04
 
-SET   = b'\x01'
-RESET = b'\x00'
+SET   = 1
+RESET = 0
 
 
 class LLDriver():
@@ -105,7 +105,10 @@ class LLDriver():
 
 		cmd = b'\xAA' + LLDriver._opDic[command]
 		for arg in kwargs:
-			cmd += bytes(arg)
+			if isinstance(arg, int):
+				cmd += arg.to_bytes(1, byteorder='big')
+			else:
+				cmd += bytes(arg)
 		cmd += b'\xAA'
 		return self.ser.write(cmd)
 
