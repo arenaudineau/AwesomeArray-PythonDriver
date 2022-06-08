@@ -13,6 +13,7 @@ RESET = 0
 ACK_NONE   = 0x00
 ACK_SET_SR = 0x01
 ACK_CLK    = 0x02
+ACK_ALL    = ACK_SET_SR | ACK_CLK
 
 class LLDriver():
 	"""

@@ -4,7 +4,7 @@ import aad.lld
 class AwesomeArrayDriver():
 	def __init__(self, pin = lld.LLDriver.DEFAULT_PID):
 		self._lld = lld.LLDriver(pin)
-		self._lld.send_command('ACK_MODE', lld.ACK_SET_SR | lld.ACK_CLK, wait_for_ack=True)
+		self._lld.send_command('ACK_MODE', lld.ACK_ALL, wait_for_ack=True)
 
 		# Also needs lab driver
 
