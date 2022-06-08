@@ -99,13 +99,12 @@ class LLDriver():
 		cmd += b'\xAA'
 		return self.ser.write(cmd)
 
-	def read(self, size=None, wait_for=False, flush_rest=True):
+	def read(self, size=None, flush_rest=True):
 		"""
 		Reads from the µc.
 
 		Parameters:
 			size:       The number of bytes to read. If None, reads everything.
-			wait_for:   If True, will wait until an input is available. If size != None, wait_for=True.
 			flush_rest: If True, flushes the input buffer if non-empty after {size} bytes have been read.
 		
 		Returns:
