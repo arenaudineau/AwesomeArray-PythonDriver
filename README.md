@@ -13,7 +13,7 @@ This library requires:
 
 ## Library Architecture
 <p align="center">
-	<img src="misc/add_arch.png" alt="Library Architecture Diagram" />
+	<img src="misc/aad_arch.png?raw=true" alt="Library Architecture Diagram" />
 </p>
 
 ## Usage
