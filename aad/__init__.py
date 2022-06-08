@@ -1,5 +1,7 @@
 import aad.lld
 
+print_ports = lld.LLDriver.print_ports
+
 class AwesomeArrayDriver():
 	def __init__(self, pin = lld.LLDriver.DEFAULT_PID):
 		self._lld = lld.LLDriver(pin)

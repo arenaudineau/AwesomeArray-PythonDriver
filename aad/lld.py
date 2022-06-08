@@ -81,8 +81,12 @@ class LLDriver():
 
 	def print_ports():
 		"""[STATIC] Prints out the useful info about the serial ports recognized by the OS."""
-		for port in serial.tools.list_ports.comports():
-			print(port, "| PID: ", port.pid)
+		ports = serial.tools.list_ports.comports()
+		if len(ports) == 0:
+			print("❌ No serial ports found")
+		else:
+			for port in serial.tools.list_ports.comports():
+				print(port, "| PID: ", port.pid)
 
 	def commands(name = None):
 		"""[STATIC] Returns a list of the available µc commands or its hex code if a name is provided."""
