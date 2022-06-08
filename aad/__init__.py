@@ -1,4 +1,3 @@
-from ctypes.wintypes import WORD
 import aad.lld
 
 class AwesomeArrayDriver():
