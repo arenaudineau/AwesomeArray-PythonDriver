@@ -10,7 +10,7 @@ def get_sr_name(sr_id):
 		0x03: 'BL' ,
 		0x04: 'BLB',
 	}[sr_id]
-	
+
 
 class AwesomeArrayDriver():
 	"""
@@ -41,12 +41,12 @@ class AwesomeArrayDriver():
 
 		# Also needs lab driver
 
-	def test_sr_sanity(self, col: int, row: int, bis: bool, set: bool):
+	def test_sr_sanity(self, col: int, row: int, bar: bool, set: bool):
 		"""
 		Tests the shift registers sanity for the given configuration of memristor location and state.
 
 		Parameters:
-			col: int, row: int, bis: bool : Memristor location
+			col: int, row: int, bar: bool : Memristor location
 			set: bool : Memristor state
 
 		Returns:
@@ -54,7 +54,7 @@ class AwesomeArrayDriver():
 			Details:
 				sanity[shitreg_id][bit_id] = True if sane, False otherwise
 		"""
-		rs = self.configure_sr(col, row, bis, set)
+		rs = self.configure_sr(col, row, bar, set)
 
 		WORD_SIZE = 64		
 		sanity = [[None for _ in range(WORD_SIZE)] for _ in range(5)]
@@ -70,12 +70,12 @@ class AwesomeArrayDriver():
 
 		return sanity
     
-	def configure_sr(self, col: int, row: int, bis: bool, set: bool):
+	def configure_sr(self, col: int, row: int, bar: bool, set: bool):
 		"""
 		Configure the shift registers for the given memristor location and state.
 
 		Parameters:
-			col: int, row: int, bis: bool : Memristor location
+			col: int, row: int, bar: bool : Memristor location
 			set: bool : Memristor state
 
 		Returns:
@@ -91,8 +91,8 @@ class AwesomeArrayDriver():
 			sr[lld.WLO] = (True << ((row - 1) // 2))
 
 		sr[lld.SL]  = (set << col)
-		sr[lld.BL]  = ((bis == set) << col)
-		sr[lld.BLB] = ((bis != set) << col)
+		sr[lld.BL]  = ((bar == set) << col)
+		sr[lld.BLB] = ((bar != set) << col)
 
 		WORD_SIZE = 64
 		for bit_id in reversed(range(WORD_SIZE)):
@@ -116,35 +116,35 @@ class AwesomeArrayDriver():
 		self._lld.send_command('ACK_MODE', lld.ACK_ALL, wait_for_ack=True)
 		self._lld.flush_input()
 
-	def set(self, col, row, bis=False):
+	def set(self, col, row, bar=False):
 		"""
 		Sets the memristor at the given address.
 
 		Parameters:
 			col: Address of the column
 			row: Address of the row
-			bis: If True, sets the memristor Rb instead of R
+			bar: If True, sets the memristor Rb instead of R
 		"""
-		self.configure_sr(col, row, bis, set=True)
+		self.configure_sr(col, row, bar, set=True)
 
-	def reset(self, col, row, bis=False):
+	def reset(self, col, row, bar=False):
 		"""
 		Resets the memristor at the given address.
 
 		Parameters:
 			col: Address of the column
 			row: Address of the row
-			bis: If True, resets the memristor Rb instead of R
+			bar: If True, resets the memristor Rb instead of R
 		"""
-		self.configure_sr(col, row, bis, set=False)
+		self.configure_sr(col, row, bar, set=False)
 
-	def form(self, col, row, bis=False):
+	def form(self, col, row, bar=False):
 		"""
 		Forms the memristor at the given address.
 
 		Parameters:
 			col: Address of the column
 			row: Address of the row
-			bis: If True, forms the memristor Rb instead of R
+			bar: If True, forms the memristor Rb instead of R
 		"""
-		self.configure_sr(col, row, bis, set=True)
+		self.configure_sr(col, row, bar, set=True)
