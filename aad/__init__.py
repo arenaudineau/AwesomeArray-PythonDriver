@@ -3,9 +3,13 @@ import aad.lld
 print_ports = lld.LLDriver.print_ports
 
 class AwesomeArrayDriver():
+	"""
+		Awesome Array Driver
+	"""
+
 	def __init__(self, pin = lld.LLDriver.DEFAULT_PID):
 		self._lld = lld.LLDriver(pin)
-		self._lld.send_command('ACK_MODE', lld.ACK_ALL, wait_for_ack=True)
+		self.reset_state()
 
 		# Also needs lab driver
 
@@ -37,13 +41,41 @@ class AwesomeArrayDriver():
 				self._lld.send_command('SET_SR', sr_id, lld.RESET, wait_for_ack=True)
 
 	def reset_state(self):
+		"""
+		Resets the state of the driver, to run after exception catching for example.
+		"""
+		self._lld.send_command('ACK_MODE', lld.ACK_ALL, wait_for_ack=True)
 		self._lld.flush_input()
 
 	def set(self, col, row, bis=False):
+		"""
+		Sets the memristor at the given address.
+
+		Parameters:
+			col: Address of the column
+			row: Address of the row
+			bis: If True, sets the memristor Rb instead of R
+		"""
 		self.__configure_sr(col, row, bis, set=True)
 
 	def reset(self, col, row, bis=False):
+		"""
+		Resets the memristor at the given address.
+
+		Parameters:
+			col: Address of the column
+			row: Address of the row
+			bis: If True, resets the memristor Rb instead of R
+		"""
 		self.__configure_sr(col, row, bis, set=False)
 
 	def form(self, col, row, bis=False):
+		"""
+		Forms the memristor at the given address.
+
+		Parameters:
+			col: Address of the column
+			row: Address of the row
+			bis: If True, forms the memristor Rb instead of R
+		"""
 		self.__configure_sr(col, row, bis, set=True)
