@@ -7,8 +7,8 @@ SL  = 0x02
 BL  = 0x03
 BLB = 0x04
 
-SET   = 1
-RESET = 0
+SET   = b'\x01'
+RESET = b'\x00'
 
 ACK_NONE   = 0x00
 ACK_SET_SR = 0x01
@@ -36,7 +36,7 @@ class LLDriver():
 		'GET_CTL' : b'\x04',
 		'ACK_MODE': b'\x05',
 
-		'DBG:PING': b'\x10',
+		'DBG:ECHO': b'\x10',
 		'DBG:LED' : b'\x11',
 	}
 
