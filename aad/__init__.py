@@ -2,6 +2,16 @@ import aad.lld
 
 print_ports = lld.LLDriver.print_ports
 
+def get_sr_name(sr_id):
+	return {
+		0x00: 'WLE',
+		0x01: 'WLO',
+		0x02: 'SL' ,
+		0x03: 'BL' ,
+		0x04: 'BLB',
+	}[sr_id]
+	
+
 class AwesomeArrayDriver():
 	"""
 		Awesome Array Driver
