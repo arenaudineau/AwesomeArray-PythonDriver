@@ -13,8 +13,36 @@ class AwesomeArrayDriver():
 
 		# Also needs lab driver
 
-	def __configure_sr(self, col: int, row: int, bis: bool, set: bool):
-		#* Bit manipulation magic ✨
+	def test_sr_sanity(self, col: int, row: int, bis: bool, set: bool):
+		"""
+		Tests the shift registers sanity for the given configuration of memristor location and state.
+
+		Parameters:
+			col: int, row: int, bis: bool : Memristor location
+			set: bool : Memristor state
+
+		Returns:
+			A 2D array containing the sanity of the shift register's bits.
+			Details:
+				sanity[shitreg_id][bit_id] = True if sane, False otherwise
+		"""
+		rs = self.configure_sr(col, row, bis, set)
+
+		WORD_SIZE = 64		
+		sanity = [[None for _ in range(WORD_SIZE)] for _ in range(5)]
+
+		for bit_id in reversed(range(WORD_SIZE)):
+			for sr_id, sr_word in enumerate(rs):
+				self._lld.send_command('GET_CTL', sr_id)
+
+				set_val = (((sr_word >> bit_id) & 1) == 1);
+				sr_val = (self._lld.read() == lld.SET)
+
+				sanity[sr_id][bit_id] = (set_val == sr_val)
+
+		return sanity
+    
+	def configure_sr(self, col: int, row: int, bis: bool, set: bool):
 
 		sr = [0, 0, 0, 0, 0] # Indices are the same as lld.WLE/WLO/...
 
@@ -59,7 +87,7 @@ class AwesomeArrayDriver():
 			row: Address of the row
 			bis: If True, sets the memristor Rb instead of R
 		"""
-		self.__configure_sr(col, row, bis, set=True)
+		self.configure_sr(col, row, bis, set=True)
 
 	def reset(self, col, row, bis=False):
 		"""
@@ -70,7 +98,7 @@ class AwesomeArrayDriver():
 			row: Address of the row
 			bis: If True, resets the memristor Rb instead of R
 		"""
-		self.__configure_sr(col, row, bis, set=False)
+		self.configure_sr(col, row, bis, set=False)
 
 	def form(self, col, row, bis=False):
 		"""
@@ -81,32 +109,4 @@ class AwesomeArrayDriver():
 			row: Address of the row
 			bis: If True, forms the memristor Rb instead of R
 		"""
-		self.__configure_sr(col, row, bis, set=True)
-
-	def test_sr_sanity(self, col, row, bis, set):
-		"""
-		Tests the shift registers sanity for the given address.
-
-		Parameters:
-			col: int, row: int, bis: bool, set: bool : Configuration to test the shift registers with
-
-		Returns:
-			A 2D array containing the sanity of the shift register's bits.
-			Details:
-				sanity[shitreg_id][bit_id] = True if sane, False otherwise
-		"""
-		rs = self.__configure_sr(col, row, bis, set)
-
-		WORD_SIZE = 64		
-		sanity = [[None for _ in range(WORD_SIZE)] for _ in range(5)]
-
-		for bit_id in reversed(range(WORD_SIZE)):
-			for sr_id, sr_word in enumerate(rs):
-				self._lld.send_command('GET_CTL', sr_id)
-
-				set_val = (((sr_word >> bit_id) & 1) == 1);
-				sr_val = (self._lld.read() == lld.SET)
-
-				sanity[sr_id][bit_id] = (set_val == sr_val)
-
-		return sanity
+		self.configure_sr(col, row, bis, set=True)
