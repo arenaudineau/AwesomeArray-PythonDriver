@@ -161,4 +161,4 @@ class LLDriver():
 	def flush_input(self):
 		"""Flushes the input buffer."""
 		while self.ser.in_waiting:
-				self.set.read()
+				self.ser.read()
