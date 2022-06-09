@@ -44,6 +44,7 @@ class AwesomeArrayDriver():
 		"""
 		Resets the state of the driver, to run after exception catching for example.
 		"""
+		self._lld.flush_input()
 		self._lld.send_command('ACK_MODE', lld.ACK_ALL, wait_for_ack=True)
 		self._lld.flush_input()
 
