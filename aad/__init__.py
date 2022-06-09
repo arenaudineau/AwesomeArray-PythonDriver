@@ -36,6 +36,9 @@ class AwesomeArrayDriver():
 		for sr_id in range(len(sr)):
 				self._lld.send_command('SET_SR', sr_id, lld.RESET, wait_for_ack=True)
 
+	def reset_state(self):
+		self._lld.flush_input()
+
 	def set(self, col, row, bis=False):
 		self.__configure_sr(col, row, bis, set=True)
 
