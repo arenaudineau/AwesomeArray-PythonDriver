@@ -5,9 +5,27 @@ print_ports = lld.LLDriver.print_ports
 class AwesomeArrayDriver():
 	"""
 		Awesome Array Driver
+
+		...
+		Attributes
+		----------
+		_lld: lld.LLDriver
+			The low-level driver used for the µc
 	"""
 
 	def __init__(self, pin = lld.LLDriver.DEFAULT_PID):
+		"""
+		Creates the driver.
+
+		Details:
+			It will search for the µc using the PID value 'DEFAULT_PID' or the one provided in argument.
+			Takes the first found if many have the same PID.
+			RAISE if not found.
+
+		Arguments:
+			pid: optional, the pid to search for.
+		"""
+
 		self._lld = lld.LLDriver(pin)
 		self.reset_state()
 
@@ -43,6 +61,16 @@ class AwesomeArrayDriver():
 		return sanity
     
 	def configure_sr(self, col: int, row: int, bis: bool, set: bool):
+		"""
+		Configure the shift registers for the given memristor location and state.
+
+		Parameters:
+			col: int, row: int, bis: bool : Memristor location
+			set: bool : Memristor state
+
+		Returns:
+			An array containing the shift registers configuration set.
+		"""
 
 		sr = [0, 0, 0, 0, 0] # Indices are the same as lld.WLE/WLO/...
 
