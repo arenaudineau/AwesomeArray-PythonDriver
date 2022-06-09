@@ -155,6 +155,10 @@ class LLDriver():
 		# else
 		out = self.ser.read(size)
 		if flush_rest:
-			while self.ser.in_waiting:
-				self.set.read()
+			self.flush_input()
 		return out
+
+	def flush_input(self):
+		"""Flushes the input buffer."""
+		while self.ser.in_waiting:
+				self.set.read()
