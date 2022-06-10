@@ -119,14 +119,14 @@ class AwesomeArrayDriver():
 
 		WORD_SIZE = 64
 		for bit_id in reversed(range(WORD_SIZE)):
-			for sr_id, sr_word in enumerate(sr):
+			for sr_id, sr_word in enumerate(sr_words):
 				self._lld.send_command('SET_SR', sr_id, (sr_word >> bit_id) & 1, wait_for_ack=True)
 
 			# As all the sr share the same clk, we pulse after setting every individual inputs
 			self._lld.send_command('CLK', wait_for_ack=True)
 
 		# Reset every inputs afterward
-		for sr_id in range(len(sr)):
+		for sr_id in range(len(sr_words)):
 				self._lld.send_command('SET_SR', sr_id, lld.RESET, wait_for_ack=True)
 
 	def reset_state(self):
