@@ -140,8 +140,11 @@ class LLDriver():
 		Returns:
 			The bytes read.
 		"""
+		if not self.ser.is_open:
+			raise Exception("Serial port not open")
+
 		if size is None:
-			out = b'';
+			out = b''
 
 			# Block until something is in
 			while not self.ser.in_waiting:
