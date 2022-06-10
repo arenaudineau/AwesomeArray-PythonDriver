@@ -5,6 +5,8 @@ import aad.lld
 # Utils export from lld
 print_ports = lld.LLDriver.print_ports
 
+from aad.lld import WLE, WLO, SL, BL, BLB
+
 SR_LIST      = [lld.WLE, lld.WLO, lld.SL, lld.BL, lld.BLB]
 SR_COUNT     = len(SR_LIST)
 SR_WORD_SIZE = 64
