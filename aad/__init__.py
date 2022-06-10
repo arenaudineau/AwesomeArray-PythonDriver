@@ -5,8 +5,9 @@ import aad.lld
 # Utils export from lld
 print_ports = lld.LLDriver.print_ports
 
-SR_list = [lld.WLE, lld.WLO, lld.SL, lld.BL, lld.BLB]
-SR_count = len(SR_list)
+SR_LIST      = [lld.WLE, lld.WLO, lld.SL, lld.BL, lld.BLB]
+SR_COUNT     = len(SR_LIST)
+SR_WORD_SIZE = 64
 
 def get_sr_name(sr_id):
 	"""
@@ -65,13 +66,12 @@ class AwesomeArrayDriver():
 				sanity[shitreg_id][bit_id] = True if sane, False otherwise
 		"""
 
-		rs = self.configure_sr(col, row, bar, set)
+		sr_words = self.configure_sr(col, row, bar, set)
+	
+		sanity = [[None for _ in range(SR_WORD_SIZE)] for _ in range(5)]
 
-		WORD_SIZE = 64		
-		sanity = [[None for _ in range(WORD_SIZE)] for _ in range(5)]
-
-		for bit_id in reversed(range(WORD_SIZE)):
-			for sr_id, sr_word in enumerate(rs):
+		for bit_id in reversed(range(SR_WORD_SIZE)):
+			for sr_id, sr_word in enumerate(sr_words):
 				self._lld.send_command('GET_CTL', sr_id)
 
 				set_val = (((sr_word >> bit_id) & 1) == 1);
@@ -117,8 +117,7 @@ class AwesomeArrayDriver():
 			sr_words: List[int] : The words to configure the shift registers with.
 		"""
 
-		WORD_SIZE = 64
-		for bit_id in reversed(range(WORD_SIZE)):
+		for bit_id in reversed(range(SR_WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr_words):
 				self._lld.send_command('SET_SR', sr_id, (sr_word >> bit_id) & 1, wait_for_ack=True)
 
@@ -126,7 +125,7 @@ class AwesomeArrayDriver():
 			self._lld.send_command('CLK', wait_for_ack=True)
 
 		# Reset every inputs afterward
-		for sr_id in range(len(sr_words)):
+		for sr_id in SR_LIST:
 				self._lld.send_command('SET_SR', sr_id, lld.RESET, wait_for_ack=True)
 
 	def reset_state(self):
