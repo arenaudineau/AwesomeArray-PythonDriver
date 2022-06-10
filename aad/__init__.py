@@ -1,14 +1,24 @@
+from typing import List
+
 import aad.lld
 
+# Utils export from lld
 print_ports = lld.LLDriver.print_ports
 
+SR_list = [lld.WLE, lld.WLO, lld.SL, lld.BL, lld.BLB]
+SR_count = len(SR_list)
+
 def get_sr_name(sr_id):
+	"""
+	Returns the name of the SR with the given ID.
+	"""
+
 	return {
-		0x00: 'WLE',
-		0x01: 'WLO',
-		0x02: 'SL' ,
-		0x03: 'BL' ,
-		0x04: 'BLB',
+		lld.WLE: 'WLE',
+		lld.WLO: 'WLO',
+		lld.SL : 'SL' ,
+		lld.BL : 'BL' ,
+		lld.BLB: 'BLB',
 	}[sr_id]
 
 
@@ -54,6 +64,7 @@ class AwesomeArrayDriver():
 			Details:
 				sanity[shitreg_id][bit_id] = True if sane, False otherwise
 		"""
+
 		rs = self.configure_sr(col, row, bar, set)
 
 		WORD_SIZE = 64		
@@ -79,20 +90,32 @@ class AwesomeArrayDriver():
 			set: bool : Memristor state
 
 		Returns:
-			An array containing the shift registers configuration set.
+			An array containing the shift registers words set.
 		"""
 
-		sr = [0, 0, 0, 0, 0] # Indices are the same as lld.WLE/WLO/...
+		sr_words = [0, 0, 0, 0, 0] # Indices are the same as lld.WLE/WLO/...
 
 		# Dispatch the WL bits between the Odd and Even registers
 		if row % 2 == 0:
-			sr[lld.WLE] = (True << (row // 2))
+			sr_words[lld.WLE] = (True << (row // 2))
 		else:
-			sr[lld.WLO] = (True << ((row - 1) // 2))
+			sr_words[lld.WLO] = (True << ((row - 1) // 2))
 
-		sr[lld.SL]  = (set << col)
-		sr[lld.BL]  = ((bar == set) << col)
-		sr[lld.BLB] = ((bar != set) << col)
+		sr_words[lld.SL]  = (set << col)
+		sr_words[lld.BL]  = ((bar == set) << col)
+		sr_words[lld.BLB] = ((bar != set) << col)
+
+		self.configure_sr_words(sr_words)
+
+		return sr_words
+
+	def configure_sr_words(self, sr_words: List[int]):
+		"""
+		Configure the shift registers with the given words.
+
+		Parameters:
+			sr_words: List[int] : The words to configure the shift registers with.
+		"""
 
 		WORD_SIZE = 64
 		for bit_id in reversed(range(WORD_SIZE)):
@@ -105,8 +128,6 @@ class AwesomeArrayDriver():
 		# Reset every inputs afterward
 		for sr_id in range(len(sr)):
 				self._lld.send_command('SET_SR', sr_id, lld.RESET, wait_for_ack=True)
-
-		return sr
 
 	def reset_state(self):
 		"""
