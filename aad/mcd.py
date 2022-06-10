@@ -1,23 +1,26 @@
 import serial
 import serial.tools.list_ports
 
+# Shift Registers IDs
 WLE = 0x00
 WLO = 0x01
 SL  = 0x02
 BL  = 0x03
 BLB = 0x04
 
+# Shift Register state code
 SET   = b'\x01'
 RESET = b'\x00'
 
+# Acknowledge Mode Flags
 ACK_NONE   = 0x00
 ACK_SET_SR = 0x01
 ACK_CLK    = 0x02
 ACK_ALL    = ACK_SET_SR | ACK_CLK
 
-class LLDriver():
+class MCDriver():
 	"""
-	Low-Level driver for the Awesome Array Python Driver.
+	µc driver for the Awesome Array Python Driver.
 
 	
 	...
@@ -91,28 +94,28 @@ class LLDriver():
 	def commands(name = None):
 		"""[STATIC] Returns a list of the available µc commands or its hex code if a name is provided."""
 		if name is None:
-			return list(LLDriver._opDic.keys())
+			return list(MCDriver._opDic.keys())
 		else:
-			return LLDriver._opDic[name]
+			return MCDriver._opDic[name]
 
 	def send_command(self, command, *kwargs, wait_for_ack=False):
 		"""
 		Sends a command to the µc with the optionnaly provided arguments.
 
 		Parameters:
-			command: The command to send (see LLDriver.commands())
+			command: The command to send (see MCDriver.commands())
 			*kwargs: The provided arguments, which will be converted to bytes
 
 		Returns:
 			The actual number of bytes sent.
 
 		"""
-		if command not in LLDriver._opDic:
+		if command not in MCDriver._opDic:
 			raise Exception("Command not found")
 		if not self.ser.is_open:
 			raise Exception("Serial port not open")
 
-		cmd = b'\xAA' + LLDriver._opDic[command]
+		cmd = b'\xAA' + MCDriver._opDic[command]
 		for arg in kwargs:
 			if isinstance(arg, int):
 				cmd += arg.to_bytes(1, byteorder='big')
@@ -124,7 +127,7 @@ class LLDriver():
 
 		if wait_for_ack:
 			ack = self.read(2, flush_rest=False)
-			if ack != b'\xAA' + LLDriver._opDic[command]:
+			if ack != b'\xAA' + MCDriver._opDic[command]:
 				raise Exception(f"Expected ack for command '{command}', got '{ack}'")
 
 		return res
