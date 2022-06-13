@@ -6,7 +6,7 @@ from aad.mcd import SR, SR_COUNT, SR_WORD_SIZE, SR_LIST, State
 # Utils export from mcd
 print_ports = mcd.MCDriver.print_ports
 
-class AwesomeArrayDriver():
+class AwesomeArrayDriver:
 	"""
 		Awesome Array Driver
 
@@ -39,8 +39,7 @@ class AwesomeArrayDriver():
 		Resets the state of the driver, to run after exception catching for example.
 		"""
 		self._mcd.flush_input()
-		self._mcd.send_command(mcd.CMD.ACK_MODE, mcd.ACK.ALL, wait_for_ack=True)
-		self._mcd.flush_input()
+		self._mcd.ack_mode(mcd.ACK_ALL)
 
 	##### µC-RELATED METHODS #####
 	def get_sr_configuration(self, col: int, row: int, bar: bool, set: bool):
@@ -77,14 +76,14 @@ class AwesomeArrayDriver():
 		"""
 		for bit_id in reversed(range(SR_WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr_words):
-				self._mcd.send_command(mcd.CMD.SET_SR, sr_id, (sr_word >> bit_id) & 1, wait_for_ack=True)
+				self._mcd.set_sr(sr_id, (sr_word >> bit_id) & 1)
 
 			# As all the sr share the same clk, we pulse after setting every individual inputs
-			self._mcd.send_command(mcd.CMD.CLK, wait_for_ack=True)
+			self._mcd.clk_sr()
 
 		# Reset every inputs afterward
 		for sr_id in SR_LIST:
-				self._mcd.send_command(mcd.CMD.SET_SR, sr_id, State.RESET, wait_for_ack=True)
+				self._mcd.set_sr(sr_id, State.RESET)
 
 	def configure_sr(self, col: int, row: int, bar: bool, set: bool):
 		"""
@@ -120,10 +119,8 @@ class AwesomeArrayDriver():
 
 		for bit_id in reversed(range(SR_WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr_words):
-				self._mcd.send_command(mcd.CMD.GET_CTL, sr_id)
-
 				set_val = (((sr_word >> bit_id) & 1) == 1)
-				sr_val = (self._mcd.read() == State.SET)
+				sr_val = self._mcd.get_ctl(sr_id)
 
 				sanity[sr_id][bit_id] = (set_val == sr_val)
 

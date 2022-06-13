@@ -64,7 +64,7 @@ class ACK(IntFlag):
 	CLK_SR    = 1 << 6
 	CLK_XNOR  = 1 << 7
 
-	ALL = SET_SR | SET_CS | SET_ADR_R | SET_ADR_C | CLK | CLK_SR | CLK_XNOR
+ACK_ALL  = ACK.SET_SR | ACK.SET_CS | ACK.SET_ADR_R | ACK.SET_ADR_C | ACK.CLK | ACK.CLK_SR | ACK.CLK_XNOR
 ACK_LIST = list(ACK.__members__.values())
 
 # Control Signals
@@ -93,9 +93,23 @@ class MCDriver:
 	-----------
 	ser : serial.Serial
 		serial port associated with the µc
+
+	uc_ack_mode : ACK
+		stores the actual ack_mode of the µc
 	
 	"""
 	DEFAULT_PID = 22336
+
+	def __new__(cls, *args, **kwargs):
+		self = super().__new__(cls)  
+
+		def gen_command_fn(command):
+			return lambda *c_args: self.call_command(command, *c_args)
+
+		for cmd in CMD.__members__:
+			setattr(self, cmd.lower(), gen_command_fn(CMD.__members__[cmd]))
+
+		return self
 
 	def __init__(self, pid = DEFAULT_PID):
 		"""
@@ -111,6 +125,7 @@ class MCDriver:
 		"""
 		self.ser = serial.Serial()
 		self.ser.baudrate = 921600
+		self.uc_ack_mode = ACK.NONE
 
 		ports = serial.tools.list_ports.comports()
 		st_port = None
@@ -129,8 +144,7 @@ class MCDriver:
 
 	def __del__(self):
 		"""Closes the serial port if still open."""
-		if self.ser.is_open:
-			self.ser.close()
+		self.ser.close()
 	
 	@staticmethod
 	def list_ports():
@@ -153,15 +167,17 @@ class MCDriver:
 
 		Parameters:
 			command: The command to send (see CMD_LIST)
-			*kwargs: The provided arguments, which will be converted to bytes
+			*args: The provided arguments, which will be converted to bytes
 
 		Returns:
 			The actual number of bytes sent.
-
 		"""
 		if not self.ser.is_open:
 			raise Exception("Serial port not open")
 
+		if command == CMD.ACK_MODE:
+			self.uc_ack_mode = args[0]
+	
 		command_bytes = command.to_bytes(1, byteorder='big')
 		cmd = b'\xAA' + command_bytes
 		for arg in args:
@@ -180,12 +196,13 @@ class MCDriver:
 
 		return res
 
-	def read(self, size=None, flush_rest=True):
+	def read(self, size=None, wait_for=True, flush_rest=True):
 		"""
 		Reads from the µc.
 
 		Parameters:
 			size:       The number of bytes to read. If None, reads everything.
+			wait_for:   When size=None, if True, waits for input ; When size!=None, wait_for is True
 			flush_rest: If True, flushes the input buffer if non-empty after {size} bytes have been read.
 		
 		Returns:
@@ -197,8 +214,8 @@ class MCDriver:
 		if size is None:
 			out = b''
 
-			# Block until something is in
-			while not self.ser.in_waiting:
+			# Block or not until something is in
+			while wait_for and not self.ser.in_waiting:
 				pass
 
 			# Read everything until the buffer is empty
@@ -211,6 +228,30 @@ class MCDriver:
 		if flush_rest:
 			self.flush_input()
 		return out
+
+	def call_command(self, command, *args):
+		"""
+		Send a command and waits for a return value if needed
+
+		Parameters:
+			command: The command to send (see CMD_LIST)
+			*args: The provided arguments, which will be converted to bytes
+
+		Returns:
+			The return value of the corresponding command or None
+
+		Details:
+			Will expect an ack if set with the corresponding 'action' command (driver.ack_mode(ACK.XXX)) (RAISE if expected and not received)
+			Will return the value received if the command is a 'get' command
+		"""
+
+		cmd_name = str(command)[4:] # str(command) == CMD.XXX => str(command)[4:] == XXX
+		wait_for_ack = (cmd_name in str(self.uc_ack_mode)) 
+		cmd_returns = (cmd_name not in str(ACK_ALL)) # If the commands does not have an associated ack, it is because it returns something
+		
+		self.send_command(command, *args, wait_for_ack=wait_for_ack)
+
+		return self.read() if cmd_returns else None
 
 	def flush_input(self):
 		"""Flushes the input buffer."""
