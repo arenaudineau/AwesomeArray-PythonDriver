@@ -1,29 +1,10 @@
 from typing import List
 
 import aad.mcd
+from aad.mcd import SR, SR_COUNT, SR_WORD_SIZE, SR_LIST, State
 
 # Utils export from mcd
 print_ports = mcd.MCDriver.print_ports
-
-from aad.mcd import WLE, WLO, SL, BL, BLB
-
-SR_LIST      = [mcd.WLE, mcd.WLO, mcd.SL, mcd.BL, mcd.BLB]
-SR_COUNT     = len(SR_LIST)
-SR_WORD_SIZE = 64
-
-def get_sr_name(sr_id):
-	"""
-	Returns the name of the SR with the given ID.
-	"""
-
-	return {
-		mcd.WLE: 'WLE',
-		mcd.WLO: 'WLO',
-		mcd.SL : 'SL' ,
-		mcd.BL : 'BL' ,
-		mcd.BLB: 'BLB',
-	}[sr_id]
-
 
 class AwesomeArrayDriver():
 	"""
@@ -58,7 +39,7 @@ class AwesomeArrayDriver():
 		Resets the state of the driver, to run after exception catching for example.
 		"""
 		self._mcd.flush_input()
-		self._mcd.send_command('ACK_MODE', mcd.ACK_ALL, wait_for_ack=True)
+		self._mcd.send_command(mcd.CMD.ACK_MODE, mcd.ACK.ALL, wait_for_ack=True)
 		self._mcd.flush_input()
 
 	##### µC-RELATED METHODS #####
@@ -73,17 +54,17 @@ class AwesomeArrayDriver():
 		Returns:
 			An array containing the computed shift registers words
 		"""
-		sr_words = [0, 0, 0, 0, 0] # Indices are the same as mcd.WLE/WLO/...
+		sr_words = [0, 0, 0, 0, 0] # Indices are the same as SR.WLE/WLO/...
 
 		# Dispatch the WL bits between the Odd and Even registers
 		if row % 2 == 0:
-			sr_words[mcd.WLE] = (True << (row // 2))
+			sr_words[SR.WLE] = (True << (row // 2))
 		else:
-			sr_words[mcd.WLO] = (True << ((row - 1) // 2))
+			sr_words[SR.WLO] = (True << ((row - 1) // 2))
 
-		sr_words[mcd.SL]  = (set << col)
-		sr_words[mcd.BL]  = ((bar == set) << col)
-		sr_words[mcd.BLB] = ((bar != set) << col)
+		sr_words[SR.SL]  = (set << col)
+		sr_words[SR.BL]  = ((bar == set) << col)
+		sr_words[SR.BLB] = ((bar != set) << col)
 
 		return sr_words
 
@@ -96,14 +77,14 @@ class AwesomeArrayDriver():
 		"""
 		for bit_id in reversed(range(SR_WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr_words):
-				self._mcd.send_command('SET_SR', sr_id, (sr_word >> bit_id) & 1, wait_for_ack=True)
+				self._mcd.send_command(mcd.CMD.SET_SR, sr_id, (sr_word >> bit_id) & 1, wait_for_ack=True)
 
 			# As all the sr share the same clk, we pulse after setting every individual inputs
-			self._mcd.send_command('CLK', wait_for_ack=True)
+			self._mcd.send_command(mcd.CMD.CLK, wait_for_ack=True)
 
 		# Reset every inputs afterward
 		for sr_id in SR_LIST:
-				self._mcd.send_command('SET_SR', sr_id, mcd.RESET, wait_for_ack=True)
+				self._mcd.send_command(mcd.CMD.SET_SR, sr_id, State.RESET, wait_for_ack=True)
 
 	def configure_sr(self, col: int, row: int, bar: bool, set: bool):
 		"""
@@ -139,10 +120,10 @@ class AwesomeArrayDriver():
 
 		for bit_id in reversed(range(SR_WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr_words):
-				self._mcd.send_command('GET_CTL', sr_id)
+				self._mcd.send_command(mcd.CMD.GET_CTL, sr_id)
 
 				set_val = (((sr_word >> bit_id) & 1) == 1)
-				sr_val = (self._mcd.read() == mcd.SET)
+				sr_val = (self._mcd.read() == State.SET)
 
 				sanity[sr_id][bit_id] = (set_val == sr_val)
 

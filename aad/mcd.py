@@ -1,23 +1,56 @@
 import serial
 import serial.tools.list_ports
 
-# Shift Registers IDs
-WLE = 0x00
-WLO = 0x01
-SL  = 0x02
-BL  = 0x03
-BLB = 0x04
+from enum import EnumMeta, IntEnum, IntFlag
+
+# Shift Registers + useful constants
+class SR(IntEnum):
+	WLE = 0x00
+	WLO = 0x01
+	SL  = 0x02
+	BL  = 0x03
+	BLB = 0x04
+
+SR_COUNT = 5
+SR_WORD_SIZE = 64
+SR_LIST = list(SR.__members__.values())
 
 # Shift Register state code
-SET   = b'\x01'
-RESET = b'\x00'
+class State(IntEnum):
+	SET   = 0x01
+	RESET = 0x00
+
+	def __eq__(self, other):
+		if other == b'\x01' or other == True:
+			return int(self) == 1
+		elif other == b'\x00' or other == False:
+			return int(self) == 0
+		
+		raise ValueError(f"Invalid comparaison between a state and an unknown value '{other}'")
+
+# Command list
+class CMD(IntEnum):
+	SET_SR   = 0x02
+	CLK      = 0x03
+	GET_CTL  = 0x04
+	ACK_MODE = 0x05
+	DBG_ECHO = 0x10
+	DBG_LED  = 0x11
+
+CMD_COUNT = 12
+CMD_LIST = list(CMD.__members__.values())
 
 # Acknowledge Mode Flags
-ACK_NONE   = 0x00
-ACK_SET_SR = 0x01
-ACK_CLK    = 0x02
-ACK_ALL    = ACK_SET_SR | ACK_CLK
+class ACK(IntFlag):
+	NONE   = 0x00
+	SET_SR = 0x01
+	CLK    = 0x02
 
+	ALL   = SET_SR | CLK
+ACK_LIST = list(ACK.__members__.values())
+
+#################
+# Driver class
 class MCDriver():
 	"""
 	µc driver for the Awesome Array Python Driver.
@@ -30,18 +63,7 @@ class MCDriver():
 		serial port associated with the µc
 	
 	"""
-
 	DEFAULT_PID = 22336
-
-	_opDic = {
-		'SET_SR'  : b'\x02',
-		'CLK'     : b'\x03',
-		'GET_CTL' : b'\x04',
-		'ACK_MODE': b'\x05',
-
-		'DBG:ECHO': b'\x10',
-		'DBG:LED' : b'\x11',
-	}
 
 	def __init__(self, pid = DEFAULT_PID):
 		"""
@@ -78,12 +100,14 @@ class MCDriver():
 		if self.ser.is_open:
 			self.ser.close()
 	
+	@staticmethod
 	def list_ports():
-		"""[STATIC] Returns a list of all the serial ports recognized by the OS."""
+		"""Returns a list of all the serial ports recognized by the OS."""
 		return serial.tools.list_ports.comports()
 
+	@staticmethod
 	def print_ports():
-		"""[STATIC] Prints out the useful info about the serial ports recognized by the OS."""
+		"""Prints out the useful info about the serial ports recognized by the OS."""
 		ports = serial.tools.list_ports.comports()
 		if len(ports) == 0:
 			print("❌ No serial ports found")
@@ -91,31 +115,23 @@ class MCDriver():
 			for port in serial.tools.list_ports.comports():
 				print(port, "| PID: ", port.pid)
 
-	def commands(name = None):
-		"""[STATIC] Returns a list of the available µc commands or its hex code if a name is provided."""
-		if name is None:
-			return list(MCDriver._opDic.keys())
-		else:
-			return MCDriver._opDic[name]
-
 	def send_command(self, command, *kwargs, wait_for_ack=False):
 		"""
 		Sends a command to the µc with the optionnaly provided arguments.
 
 		Parameters:
-			command: The command to send (see MCDriver.commands())
+			command: The command to send (see CMD_LIST)
 			*kwargs: The provided arguments, which will be converted to bytes
 
 		Returns:
 			The actual number of bytes sent.
 
 		"""
-		if command not in MCDriver._opDic:
-			raise Exception("Command not found")
 		if not self.ser.is_open:
 			raise Exception("Serial port not open")
 
-		cmd = b'\xAA' + MCDriver._opDic[command]
+		command_bytes = command.to_bytes(1, byteorder='big')
+		cmd = b'\xAA' + command_bytes
 		for arg in kwargs:
 			if isinstance(arg, int):
 				cmd += arg.to_bytes(1, byteorder='big')
@@ -127,7 +143,7 @@ class MCDriver():
 
 		if wait_for_ack:
 			ack = self.read(2, flush_rest=False)
-			if ack != b'\xAA' + MCDriver._opDic[command]:
+			if ack != b'\xAA' + command_bytes:
 				raise Exception(f"Expected ack for command '{command}', got '{ack}'")
 
 		return res
