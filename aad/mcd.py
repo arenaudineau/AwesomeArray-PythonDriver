@@ -1,19 +1,23 @@
 import serial
 import serial.tools.list_ports
 
-from enum import EnumMeta, IntEnum, IntFlag
+from enum import IntEnum, IntFlag
+from enum import auto as en_auto
 
-# Shift Registers + useful constants
+###################
+# C enums and flags
+
+# Shift Registers
 class SR(IntEnum):
-	WLE = 0x00
-	WLO = 0x01
-	SL  = 0x02
-	BL  = 0x03
-	BLB = 0x04
+	WLE = 0
+	WLO = en_auto()
+	SL  = en_auto()
+	BL  = en_auto()
+	BLB = en_auto()
 
-SR_COUNT = 5
 SR_WORD_SIZE = 64
-SR_LIST = list(SR.__members__.values())
+SR_LIST  = list(SR.__members__.values())
+SR_COUNT = len(SR_LIST)
 
 # Shift Register state code
 class State(IntEnum):
@@ -30,28 +34,56 @@ class State(IntEnum):
 
 # Command list
 class CMD(IntEnum):
-	SET_SR   = 0x02
-	CLK      = 0x03
-	GET_CTL  = 0x04
-	ACK_MODE = 0x05
-	DBG_ECHO = 0x10
-	DBG_LED  = 0x11
+	SET_SR     = 0
+	SET_CS     = en_auto()
+	SET_ADR_R  = en_auto()
+	SET_ADR_C  = en_auto()
 
-CMD_COUNT = 12
-CMD_LIST = list(CMD.__members__.values())
+	GET_CTL    = en_auto()
+
+	CLK        = en_auto()
+	CLK_SR     = en_auto()
+	CLK_XNOR   = en_auto()
+
+	ACK_MODE   = en_auto()
+
+	DEBUG_ECHO = en_auto()
+	DEBUG_LED  = en_auto()
+
+CMD_LIST  = list(CMD.__members__.values())
+CMD_COUNT = len(CMD_LIST)
 
 # Acknowledge Mode Flags
 class ACK(IntFlag):
-	NONE   = 0x00
-	SET_SR = 0x01
-	CLK    = 0x02
+	NONE      = 0x00
+	SET_SR    = 1 << 1
+	SET_CS    = 1 << 2
+	SET_ADR_R = 1 << 3
+	SET_ADR_C = 1 << 4
+	CLK       = 1 << 5
+	CLK_SR    = 1 << 6
+	CLK_XNOR  = 1 << 7
 
-	ALL   = SET_SR | CLK
+	ALL = SET_SR | SET_CS | SET_ADR_R | SET_ADR_C | CLK | CLK_SR | CLK_XNOR
 ACK_LIST = list(ACK.__members__.values())
+
+# Control Signals
+class CS(IntEnum):
+	CARAC_EN      = 0
+	CSL           = en_auto()
+	CBLEN         = en_auto()
+	ACTIVATE_XNOR = en_auto()
+	SR_XNOR       = en_auto()
+	CBL           = en_auto()
+	CWL           = en_auto()
+	READ          = en_auto()
+	READ_OUT      = en_auto()
+CS_LIST  = list(CS.__members__.values())
+CS_COUNT = len(CS_LIST)
 
 #################
 # Driver class
-class MCDriver():
+class MCDriver:
 	"""
 	µc driver for the Awesome Array Python Driver.
 
@@ -115,7 +147,7 @@ class MCDriver():
 			for port in serial.tools.list_ports.comports():
 				print(port, "| PID: ", port.pid)
 
-	def send_command(self, command, *kwargs, wait_for_ack=False):
+	def send_command(self, command, *args, wait_for_ack=False):
 		"""
 		Sends a command to the µc with the optionnaly provided arguments.
 
@@ -132,7 +164,7 @@ class MCDriver():
 
 		command_bytes = command.to_bytes(1, byteorder='big')
 		cmd = b'\xAA' + command_bytes
-		for arg in kwargs:
+		for arg in args:
 			if isinstance(arg, int):
 				cmd += arg.to_bytes(1, byteorder='big')
 			else:
