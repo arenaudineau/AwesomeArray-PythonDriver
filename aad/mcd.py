@@ -3,6 +3,8 @@ import serial.tools.list_ports
 
 from enum import IntEnum, IntFlag
 from enum import auto as en_auto
+from functools import reduce
+from operator import or_
 
 ###################
 # C enums and flags
@@ -64,8 +66,8 @@ class ACK(IntFlag):
 	CLK_SR    = 1 << 6
 	CLK_XNOR  = 1 << 7
 
-ACK_ALL  = ACK.SET_SR | ACK.SET_CS | ACK.SET_ADR_R | ACK.SET_ADR_C | ACK.CLK | ACK.CLK_SR | ACK.CLK_XNOR
 ACK_LIST = list(ACK.__members__.values())
+ACK_ALL = reduce(or_, ACK_LIST)
 
 # Control Signals
 class CS(IntEnum):
