@@ -84,6 +84,14 @@ CS_LIST  = list(CS.__members__.values())
 CS_COUNT = len(CS_LIST)
 
 #################
+# Utils function
+def as_int(b: bytes) -> int:
+	return int.from_bytes(b, 'big')
+
+def as_bytes(i: int) -> bytes:
+	return i.to_bytes((i.bit_length() + 7) // 8, 'big')
+
+#################
 # Driver class
 class MCDriver:
 	"""
@@ -180,11 +188,11 @@ class MCDriver:
 		if command == CMD.ACK_MODE:
 			self.uc_ack_mode = args[0]
 	
-		command_bytes = command.to_bytes(1, byteorder='big')
+		command_bytes = as_bytes(command)
 		cmd = b'\xAA' + command_bytes
 		for arg in args:
 			if isinstance(arg, int):
-				cmd += arg.to_bytes(1, byteorder='big')
+				cmd += as_bytes(arg)
 			else:
 				cmd += bytes(arg)
 		cmd += b'\xAA'
