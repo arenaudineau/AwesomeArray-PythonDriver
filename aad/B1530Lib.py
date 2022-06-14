@@ -2,6 +2,7 @@ from extlibs import B1530Driver
 import pyvisa as visa
 
 from typing import List
+from copy import deepcopy
 
 def device_list():
 	return visa.ResourceManager('@ivi').list_resources('?*')
@@ -18,13 +19,35 @@ class Pulse:
 	pattern_voltage: List[float]
 
 	wait_time: float
-	lead:      float
 	length:    float
+	lead:      float
 	trail:     float
 
+	@property
+	def voltage(self):
+		assert False, "Pulse.voltage should not be get"
+	@voltage.setter
+	def voltage(self, value):
+		self.pattern_voltage = [0, value, value, 0, 0]
+
+	@property
+	def edges(self):
+		assert False, "Pulse.edges should not be get"
+	@edges.setter
+	def edges(self, value):
+		self.lead  = value
+		self.trail = value
+
 	def get_time_pattern(self):
+		"""Returns the time pattern of the pulse in the expected format of the underlying driver"""
 		return [self.wait_time, self.lead, self.length, self.trail, self.wait_time]
 
+	def as_model(self):
+		"""Returns the pulse as a model that can be used to create other pulses with the same parameters"""
+		class Model:
+			def __new__(cls):
+				return deepcopy(self)
+		return Model
 
 class B1530:
 	DEFAULT_ADDR = r'GPIB0::18::INSTR'
