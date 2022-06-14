@@ -50,19 +50,34 @@ class B1530:
 		else:
 			self.average_time = [average_time] * 4
 
-		err = B1530Driver.openSession(addr)
-		if err[0] != 0:
-			raise Exception("Failed to connect to B1530, please verify its connection, specify its address or make sure a previous connection as been closed")
+		self.__err_msg = "Failed to connect to B1530."
+		self.__handled_error(B1530Driver.openSession, addr)
 
 	def __del__(self):
 		self.__handled_error(B1530Driver.closeSession)
 
+	def __print_placeholder(self, *args):
+		for arg in args:
+			self._error_buffer.append(repr(args))
+
 	def __handle_error(self, err):
 		if err[0] != 0:
-			raise Exception(f'Error: {err[1]}')
+			except_msg = "BF1530 Driver error occured" if self.__err_msg is None else self.__err_msg
+			if len(self._error_buffer) != 0:
+				except_msg += "\nDetails:" + "\n".join(self._error_buffer)
+			else:
+				except_msg += ": " + err[1]
+			
+			self.__err_msg = None
+			self._error_buffer = []
+			
+			raise Exception(except_msg)
 
 	def __handled_error(self, fn, *args, **kwargs):
+		print_backup = print
+		print = self.__print_placeholder
 		self.__handle_error(fn(*args, **kwargs))
+		print = print_backup
 
 	def wgfmu_conf(self, wgfmu_id, measure_mode, measure_range, range_force='auto'):
 		self.__handled_error(B1530Driver.setMeasureMode, self.WGFMU_chans[wgfmu_id], B1530Driver._measureMode[measure_mode])
