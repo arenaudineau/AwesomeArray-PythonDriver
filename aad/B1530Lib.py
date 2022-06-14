@@ -1,4 +1,4 @@
-from extlibs import B1530Driver
+from aad.extlibs import B1530Driver
 import pyvisa as visa
 
 from typing import List
