@@ -50,7 +50,9 @@ class B1530:
 		else:
 			self.average_time = [average_time] * 4
 
-		self.__handled_error(B1530Driver.openSession, addr)
+		err = B1530Driver.openSession(addr)
+		if err[0] != 0:
+			raise Exception("Failed to connect to B1530, please verify its connection, specify its address or make sure a previous connection as been closed")
 
 	def __del__(self):
 		self.__handled_error(B1530Driver.closeSession)

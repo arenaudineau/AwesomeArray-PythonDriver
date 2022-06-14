@@ -1,6 +1,6 @@
 from typing import List
 
-import aad.mcd
+import aad.mcd, aad.B1530Lib
 from aad.mcd import SR, SR_COUNT, SR_WORD_SIZE, SR_LIST, State
 
 # Utils export from mcd
@@ -15,6 +15,9 @@ class AwesomeArrayDriver:
 		----------
 		_mcd: mcd.MCDriver
 			The low-level driver used for the µc
+
+		_b1530: B1530Lib.B1530
+			The driver used to control the B1530
 	"""
 
 	def __init__(self, pid = mcd.MCDriver.DEFAULT_PID):
@@ -30,9 +33,9 @@ class AwesomeArrayDriver:
 			pid: optional, the pid to search for.
 		"""
 		self._mcd = mcd.MCDriver(pid)
+		self._b1530 = B1530Lib.B1530(1e-5, 1e-5)
+		
 		self.reset_state()
-
-		# Also needs lab driver
 
 	def reset_state(self):
 		"""
@@ -156,6 +159,18 @@ class AwesomeArrayDriver:
 			bar: If True, sets the memristor Rb instead of R
 		"""
 		self.configure_sr(col, row, bar, set=True)
+
+		pulse = B1530Lib.Pulse()
+		pulse.name = 'VA'
+		pulse.meas  = 'voltage'
+		pulse.range = '5V'
+		pulse.pattern_voltage = [0, 1, 1, 0, 0]
+		pulse.trail = 100e-5
+		pulse.lead  = 100e-5
+		pulse.wait_time = 0.1e-6
+		pulse.length = 0.5
+
+		self._b1530.apply_pulses([None, pulse, None, None])
 
 	def reset(self, col, row, bar=False):
 		"""
