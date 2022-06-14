@@ -8,4 +8,4 @@ build/
 dist/
 
 # This folder contains proprietary code
-extlibs/*[!__init__.py]
+extlibs/B1530Driver/B1530*
