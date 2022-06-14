@@ -9,7 +9,7 @@ This library requires:
 * `pyvisa` version 1.11.3 or any other compatible version
 * The associated NI-VISA drivers, see [the official doc](https://pyvisa.readthedocs.io/en/latest/faq/getting_nivisa.html#faq-getting-nivisa). (⚠️ 32 bits version required)
 
-### Easy installation
+### Global installation
 1. Download and install the NI-VISA drivers
 2. `B1530driver.py` and `B1530ErrorModule.py` are licensed and cannot be shared on GitHub, they are therefore missing on this repo.  
 You must copy them at the location `extlibs/B1530Driver`, aside the `__init__.py` file.  
