@@ -48,9 +48,13 @@ class Pulse:
 
 	def as_model(self):
 		"""Returns the pulse as a model that can be used to create other pulses with the same parameters"""
-		class Model:
-			def __new__(cls):
-				return deepcopy(self)
+		class Model(Pulse):
+			def __new__(cls, **kwargs):
+				new = deepcopy(self)
+				for key in kwargs:
+					setattr(new, key, kwargs[key])
+				return new
+			
 		return Model
 
 class B1530:
