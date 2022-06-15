@@ -38,6 +38,10 @@ class Pulse:
 		self.lead  = value
 		self.trail = value
 
+	def __init__(self, **kwargs):
+		for key in kwargs:
+			setattr(self, key, kwargs[key])
+
 	def get_time_pattern(self):
 		"""Returns the time pattern of the pulse in the expected format of the underlying driver"""
 		return [self.wait_time, self.lead, self.length, self.trail, self.wait_time]
