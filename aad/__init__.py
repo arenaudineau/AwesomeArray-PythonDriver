@@ -1,6 +1,6 @@
 from typing import List
 
-import aad.mcd, aad.B1530Lib
+from aad import mcd, B1530Lib
 from aad.mcd import SR, SR_COUNT, SR_WORD_SIZE, SR_LIST, State
 
 # Utils export from mcd

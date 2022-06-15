@@ -11,4 +11,4 @@ dist/
 .vscode
 
 # This folder contains proprietary code
-extlibs/B1530Driver/B1530*
+**/extlibs/B1530Driver/B1530*
