@@ -5,6 +5,7 @@ from aad.mcd import SR, SR_COUNT, SR_WORD_SIZE, SR_LIST, State
 
 # Utils export from mcd
 print_ports = mcd.MCDriver.print_ports
+print_visa_dev = B1530Lib.print_devices
 
 class AwesomeArrayDriver:
 	"""
@@ -20,7 +21,7 @@ class AwesomeArrayDriver:
 			The driver used to control the B1530
 	"""
 
-	def __init__(self, pid = mcd.MCDriver.DEFAULT_PID):
+	def __init__(self, uc_pid = mcd.MCDriver.DEFAULT_PID, visa_addr = B1530Lib.B1530.DEFAULT_ADDR):
 		"""
 		Creates the driver.
 
@@ -32,8 +33,8 @@ class AwesomeArrayDriver:
 		Arguments:
 			pid: optional, the pid to search for.
 		"""
-		self._mcd = mcd.MCDriver(pid)
-		self._b1530 = B1530Lib.B1530(1e-5, 1e-5)
+		self._mcd = mcd.MCDriver(uc_pid)
+		self._b1530 = B1530Lib.B1530(1e-5, 1e-5, addr=visa_addr)
 
 		pulse_model = B1530Lib.Pulse()
 		pulse_model.name = 'VA'
