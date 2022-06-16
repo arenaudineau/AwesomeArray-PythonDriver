@@ -34,22 +34,7 @@ class AwesomeArrayDriver:
 			pid: optional, the pid to search for.
 		"""
 		self._mcd = mcd.MCDriver(uc_pid)
-		self._b1530 = B1530Lib.B1530(1e-5, 1e-5, addr=visa_addr)
-
-		pulse_model = B1530Lib.Pulse()
-		pulse_model.name = 'VA'
-		pulse_model.meas  = 'voltage'
-		pulse_model.range = '5V'
-		pulse_model.voltage = 1
-		pulse_model.edges = 100e-5
-		pulse_model.wait_time = 0.1e-6
-		pulse_model.length = 0.5
-
-		self.PulseModel = pulse_model.as_model()
-
-		self.pulse_set   = self.PulseModel()
-		self.pulse_reset = self.PulseModel()
-		self.pulse_form  = self.PulseModel()
+		# self._b1530 = B1530Lib.B1530(addr=visa_addr)
 		
 		self.reset_state()
 
@@ -176,7 +161,9 @@ class AwesomeArrayDriver:
 		"""
 		self.configure_sr(col, row, bar, set=True)
 
-		self._b1530.apply_pulses([None, self.pulse_set, None, None])
+		# ...
+		# self._b1530.configure()
+		# self._b1530.exec()
 
 	def reset(self, col, row, bar=False):
 		"""
@@ -189,6 +176,10 @@ class AwesomeArrayDriver:
 		"""
 		self.configure_sr(col, row, bar, set=False)
 
+		# ...
+		# self._b1530.configure()
+		# self._b1530.exec()
+
 	def form(self, col, row, bar=False):
 		"""
 		Forms the memristor at the given address.
@@ -199,3 +190,7 @@ class AwesomeArrayDriver:
 			bar: If True, forms the memristor Rb instead of R
 		"""
 		self.configure_sr(col, row, bar, set=True)
+
+		# ...
+		# self._b1530.configure()
+		# self._b1530.exec()

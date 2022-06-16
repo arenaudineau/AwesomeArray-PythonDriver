@@ -1,9 +1,11 @@
 from aad.extlibs import B1530Driver
+from aad.extlibs.stderr_redirect import stderr_redirector
 import pyvisa as visa
 
-from typing import List
-from copy import deepcopy
+import io
 
+################
+# Utils function
 def device_list():
 	return visa.ResourceManager('@ivi').list_resources('?*')
 
@@ -11,160 +13,274 @@ def print_devices():
 	for device in device_list():
 		print(device)
 
-class Pulse:
-	name:  str
-	meas:  str
-	range: str
-	#save:  bool
-	pattern_voltage: List[float]
+################
+# Waveform class
+class Waveform:
+	def __init__(self, **kwargs):
+		# Pattern: [[Time (s), Voltage (V)], ...]
+		for key in kwargs:
+			setattr(self, key, kwargs[key])
+		
+		# If no pattern has been set, we create a null one
+		if not hasattr(self, 'pattern') or len(self.pattern) == 0:
+			self.pattern = [[0, 0]]
+	
+	def measure(self, **kwargs):
+		meas = Measurement()
+		return meas
 
-	wait_time: float
-	length:    float
-	lead:      float
-	trail:     float
+	def get_time_pattern(self):
+		return [p[0] for p in self.pattern]
+	
+	def get_voltage_pattern(self):
+		return [p[1] for p in self.pattern]
+
+	def get_total_duration(self):
+		return sum(self.get_time_pattern())
+
+class Pulse(Waveform):
+	def __init__(self, **kwargs):
+		self.pattern = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
+		super().__init__(**kwargs)
 
 	@property
-	def voltage(self):
-		assert False, "Pulse.voltage should not be get"
-	@voltage.setter
-	def voltage(self, value):
-		self.pattern_voltage = [0, value, value, 0, 0]
+	def interval(self):
+		wait_beg = self.pattern[0][0]
+		wait_end = self.pattern[4][0]
+		if wait_beg == wait_end:
+			return wait_beg * 2
+		else:
+			return wait_beg, wait_end
+
+	@interval.setter
+	def interval(self, value):
+		self.pattern[0][0] = value / 2
+		self.pattern[4][0] = value / 2
+
+	@property
+	def length(self):
+		return self.pattern[2][0]
+
+	@length.setter
+	def length(self, value):
+		self.pattern[2][0] = value
 
 	@property
 	def edges(self):
-		assert False, "Pulse.edges should not be get"
+		lead  = self.pattern[1][0]
+		trail = self.pattern[3][0]
+		if lead == trail:
+			return lead
+		else:
+			return lead, trail
+
 	@edges.setter
 	def edges(self, value):
-		self.lead  = value
-		self.trail = value
+		self.pattern[1][0] = value
+		self.pattern[3][0] = value
 
-	def __init__(self, **kwargs):
+	@property
+	def voltage(self):
+		if self.pattern[1][1] != self.pattern[2][1]:
+			return self.get_voltage_pattern()
+		else:
+			return self.pattern[1][1]
+
+	@voltage.setter
+	def voltage(self, value):
+		self.pattern[1][1] = value
+		self.pattern[2][1] = value
+
+	def measure(self, **kwargs):
+		kwargs.setdefault('duration', -1)
+
+		meas = Measurement(**kwargs)
+		if kwargs.get('when_established', False):
+			meas.start_delay += self.pattern[0][0] + self.pattern[1][0]
+			meas.duration = self.length
+		if meas.duration == -1:
+			meas.duration = self.get_total_duration() - meas.start_delay
+		
+		return meas
+
+###################
+# Measurement class
+class Measurement:
+	def __init__(self, mode, average_time, sample_rate, duration, **kwargs):
+		self.start_delay = 0
+		self.mode = mode
+		self.average_time = average_time
+		self.sample_rate = sample_rate
+		self.duration = duration
 		for key in kwargs:
 			setattr(self, key, kwargs[key])
 
-	def get_time_pattern(self):
-		"""Returns the time pattern of the pulse in the expected format of the underlying driver"""
-		return [self.wait_time, self.lead, self.length, self.trail, self.wait_time]
+		self.result = []
 
-	def as_model(self):
-		"""Returns the pulse as a model that can be used to create other pulses with the same parameters"""
-		class Model(Pulse):
-			def __new__(cls, **kwargs):
-				new = deepcopy(self)
-				for key in kwargs:
-					setattr(new, key, kwargs[key])
-				return new
-			
-		return Model
+	def get_measurement_count(self):
+		return int(self.duration / self.sample_rate)
 
+	def get_total_duration(self):
+		return self.start_delay + self.duration
+
+	def get_result(self, index = -1):
+		return self.result if index == -1 else self.result[index]
+
+#############
+# WGFMU Class
+class WGFMU:
+	def __init__(self, id: int):
+		self.id = id
+		self.waveform = None
+		self.measurement = None
+
+###############
+# B1530 Wrapper
 class B1530:
 	DEFAULT_ADDR = r'GPIB0::18::INSTR'
 
-	WGFMU_chans = {
-		1: 101,
-		2: 102,
-		3: 201,
-		4: 202,
-	}
+	def __init__(self, addr=DEFAULT_ADDR):
+		b1530_methods = [func for func in dir(B1530Driver) if callable(getattr(B1530Driver, func)) and not func.startswith("__")]
+		for method in b1530_methods:
+			fn = getattr(B1530Driver, method)
+			def wrapper_gen(func):
+				def call_wrapper(*args, **kwargs):
+					err_buf = io.BytesIO()
+					has_err = False
+					with stderr_redirector(err_buf):
+						ret = func(*args, **kwargs)
+						if isinstance(ret, tuple):
+							err = ret[0]
+							rets = ret[1:]
+						else:
+							err = ret
+							rets = None
+						has_err = (err[0] != 0)
+					
+					if has_err:
+						raise Exception(err_buf.getvalue().decode('utf-8'))
 
-	def __init__(self, sampling_interval, average_time, addr=DEFAULT_ADDR):
-		self.meas_start_delay = [0] * 4
+					return rets
+				return call_wrapper
+			
+			setattr(self, 'd_' + method, wrapper_gen(fn))
 
-		if isinstance(sampling_interval, List):
-			self.sampling_interval = sampling_interval
-		else:
-			self.sampling_interval = [sampling_interval] * 4
-		
-		if isinstance(average_time, List):
-			self.average_time = average_time
-		else:
-			self.average_time = [average_time] * 4
+		self.chan = {
+			1: WGFMU(101),
+			2: WGFMU(102),
+			3: WGFMU(201),
+			4: WGFMU(202),
+		}
 
-		self.__err_msg = "Failed to connect to B1530."
-		self._error_buffer = []
-		self.__handled_error(B1530Driver.openSession, addr)
+		self.active_chan = {
+			1: False,
+			2: False,
+			3: False,
+			4: False,
+		}
+
+		self.pattern_name = {
+			1: 'Pattern1',
+			2: 'Pattern2',
+			3: 'Pattern3',
+			4: 'Pattern4',
+		}
+
+		self.repeat = 1
+
+		self.d_openSession(addr)
 
 	def __del__(self):
-		self.__handled_error(B1530Driver.closeSession)
+		self.d_initialize()
+		self.d_closeSession()
 
-	def __print_placeholder(self, *args):
-		self._error_buffer.append(map(str, args))
+	def configure(self, repeat=1):
+		self.d_clear()
 
-	def __handle_error(self, err):
-		if err[0] != 0:
-			except_msg = "BF1530 Driver error occured" if self.__err_msg is None else self.__err_msg
-			if len(self._error_buffer) != 0:
-				except_msg += "\nDetails:\n" + "\n".join(map(lambda e: " ".join(e), self._error_buffer))
+		self.repeat = repeat
+
+		for i, channel in self.chan.items():
+			if channel.waveform is None:
+				if channel.measurement is None:
+					self.active_chan[i] = False
+					continue
+				else: # If there is a measurement, we overwrite the pattern accordingly so
+					channel.waveform = Waveform(pattern=[[channel.measurement.get_total_duration(), 0]])
+			self.active_chan[i] = True
+
+			# Configure waveforms
+			wf = channel.waveform
+			self.d_createPattern(self.pattern_name[i], wf.pattern[0][1])
+			if len(wf.pattern) > 1:
+				time_pattern = wf.get_time_pattern()
+				voltage_pattern = wf.get_voltage_pattern()
+
+				if time_pattern[0] == 0: # If the first time point is 0, it has been set to define the start voltage, we remove it
+					time_pattern    = time_pattern[1:]
+					voltage_pattern = voltage_pattern[1:]
+					if len(time_pattern) == 0: # If it becomes empty, we dont add vector
+						break
+
+				self.d_addVectors(self.pattern_name[i], time_pattern, voltage_pattern, len(time_pattern))
 			else:
-				except_msg += ": " + err[1]
-			self._error_buffer = []
-			
-			raise Exception(except_msg)
-		self.__err_msg = None
+				self.d_addVector(self.pattern_name[i], wf.pattern[0][0], wf.pattern[0][1])
 
-	def __handled_error(self, fn, *args, **kwargs):
-		__builtins__['print_backup'] = __builtins__['print']
-		__builtins__['print'] = self.__print_placeholder
-		self.__handle_error(fn(*args, **kwargs))
-		__builtins__['print'] = __builtins__['print_backup']
+			# Configure measurement
+			meas = channel.measurement
+			if meas is not None:
+				meas_event_name = 'MeasEvent' + str(i)
+				start_delay = meas.start_delay
+				self.d_setMeasureEvent(
+					self.pattern_name[i],
+					meas_event_name,
+					start_delay,
+					meas.get_measurement_count(),
+					meas.sample_rate,
+					meas.average_time,
+					B1530Driver._measureEventData['averaged']
+				)
 
-	def wgfmu_conf(self, wgfmu_id, measure_mode, measure_range, range_force='auto'):
-		self.__handled_error(B1530Driver.setMeasureMode, self.WGFMU_chans[wgfmu_id], B1530Driver._measureMode[measure_mode])
-		if measure_mode=="current":
-			self.__handled_error(B1530Driver.setMeasureCurrentRange, self.WGFMU_chans[wgfmu_id], B1530Driver._measureCurrentRange[measure_range])
-		elif measure_mode=="voltage":
-			self.__handled_error(B1530Driver.setForceVoltageRange, self.WGFMU_chans[wgfmu_id], B1530Driver._forceVoltageRange[range_force])
-			self.__handled_error(B1530Driver.setMeasureVoltageRange, self.WGFMU_chans[wgfmu_id], B1530Driver._measureVoltageRange[measure_range])
-		else:
-			raise ValueError(f"Unknown measure mode '{measure_mode}'")
+			# Link config to the chan
+			self.d_addSequence(channel.id, self.pattern_name[i], self.repeat)
 
-		self.__handled_error(B1530Driver.connect, self.WGFMU_chans[wgfmu_id])
-		self.__handled_error(B1530Driver.clear) #clear software
-	
-	def wgfmu_conf_mode(self, wgfmu_id, op_mode):
-		self.__handle_error(B1530Driver.setOperationMode(self.WGFMU_chans[wgfmu_id], B1530Driver._operationMode[op_mode]))
-		
-	def wgfmu_conf_pattern(self, wgfmu_id, pattern_name, measure_count, pattern_voltage, time_pattern, event_name, pulse_count, rdata='averaged'):
-		if len(pattern_voltage) <= 1:
-			self.__handled_error(B1530Driver.createPattern, pattern_name, pattern_voltage)
-			self.__handled_error(B1530Driver.addVector, pattern_name, time_pattern, pattern_voltage)
-		else:
-			self.__handled_error(B1530Driver.createPattern, pattern_name, pattern_voltage[0])
-			self.__handled_error(B1530Driver.addVectors, pattern_name, time_pattern, pattern_voltage, len(pattern_voltage))
-		
+	def get_active_chans(self):
+		return dict(filter(lambda i: self.active_chan[i[0]], self.chan.items()))
 
-		self.__handled_error(
-			B1530Driver.setMeasureEvent,
-				pattern_name,
-				event_name,
-				self.meas_start_delay[wgfmu_id-1],
-				measure_count,
-				self.sampling_interval[wgfmu_id-1],
-				self.average_time[wgfmu_id-1],
-				B1530Driver._measureEventData[rdata]
-			)
-		self.__handled_error(B1530Driver.addSequence, self.WGFMU_chans[wgfmu_id], pattern_name, pulse_count)
+	def get_inactive_chans(self):
+		return dict(filter(lambda i: not self.active_chan[i[0]], self.chan.items()))
 
-	def apply_pulses(self, pulses: List[Pulse], count=1):
-		if len(pulses) > 4:
-			raise Exception(f"Too many pulses. 4 max, got {len(pulses)}")
+	def exec(self):
+		self.d_initialize()
 
-		pattern_names = ["WaveA", "WaveB", "WaveC", "WaveD"]
+		chan = self.get_active_chans()
+		if len(chan) == 0:
+			return
 
-		measure_count = -1 # To set
-		for wgfmu_id in range(1, 5):
-			pulse = pulses[wgfmu_id - 1]
-			if pulse is None:
-				continue
+		for i, channel in chan.items():
+			self.d_setOperationMode(channel.id, B1530Driver._operationMode['fastiv'])
 
-			pat_measure_count = 1 #sum(pulse.get_time_pattern() - self.meas_start_delay[0]) / self.sampling_interval[0]
+			if channel.measurement is not None:
+				mode = channel.measurement.mode
+				self.d_setMeasureMode(channel.id, B1530Driver._measureMode[mode])
+				
+				if mode == 'voltage':
+					self.d_setForceVoltageRange(channel.id, B1530Driver._forceVoltageRange['auto'])
+					self.d_setMeasureVoltageRange(channel.id, B1530Driver._measureVoltageRange[channel.measurement.range])
+				else:
+					self.d_setMeasureCurrentRange(channel.id, B1530Driver._measureCurrentRange[channel.measurement.range])
 
-			self.wgfmu_conf_mode(wgfmu_id, 'fastiv')
-			self.wgfmu_conf(wgfmu_id, pulse.meas, pulse.range)
-			self.wgfmu_conf_pattern(wgfmu_id, pattern_names[wgfmu_id-1], pat_measure_count, pulse.pattern_voltage, pulse.get_time_pattern(), pulse.name, count)
+			self.d_connect(channel.id)
 
-		self.__handled_error(B1530Driver.execute)
-		status = 0
-		while status != 10000:
-			error, status, _, _ = B1530Driver.getStatus()
-			self.__handle_error(error)
+		self.d_execute()
+		self.d_waitUntilCompleted()
+
+		for i, channel in chan.items():
+			if channel.measurement is not None:
+				count = channel.measurement.get_measurement_count()
+				time, meas = self.d_getMeasureValues(channel.id, 0, count * self.repeat)
+
+				channel.measurement.result = []
+				for j in range(self.repeat):
+					start_id = count * j
+					end_id   = start_id + count
+					channel.measurement.result.append(list(zip(time[start_id:end_id], meas[start_id:end_id])))
