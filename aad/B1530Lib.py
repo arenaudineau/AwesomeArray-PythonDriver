@@ -5,6 +5,7 @@ import pyvisa as visa
 import pandas as pd
 
 import io
+from copy import deepcopy
 
 ################
 # Utils function
@@ -23,12 +24,13 @@ class Waveform:
 		self.pattern = pattern
 	
 	def append(self, other):
-		self.pattern.extend(other.pattern)
+		self.pattern.extend(deepcopy(other.pattern))
 		return self # To chain
 
 	def repeat(self, count):
+		pattern_copy = deepcopy(self.pattern)
 		for _ in range(count):
-			self.extend(self)
+			self.pattern.extend(deepcopy(pattern_copy))
 		return self # To chain
 	
 	def measure(self, **kwargs):
