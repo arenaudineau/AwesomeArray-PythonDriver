@@ -201,6 +201,9 @@ class B1530:
 	def get_inactive_chans(self):
 		return dict(filter(lambda i: not self.active_chan[i[0]], self.chan.items()))
 
+	def get_meas_chans(self):
+		return dict(filter(lambda c: c.meas is not None, self.chan.values()))
+
 	def reset_configuration(self):
 		for wgfmu in self.chan.values():
 			wgfmu.wave = None
@@ -260,7 +263,7 @@ class B1530:
 			# Connect and configure wgfmu hardware
 			self.d_setOperationMode(channel.id, B1530Driver._operationMode['fastiv'])
 
-			if channel.meas is not None:
+			if meas is not None:
 				mode = channel.meas.mode
 				self.d_setMeasureMode(channel.id, B1530Driver._measureMode[mode])
 				
@@ -270,23 +273,27 @@ class B1530:
 				else:
 					self.d_setMeasureCurrentRange(channel.id, B1530Driver._measureCurrentRange[channel.meas.range])
 
-				self.d_connect(channel.id)
+			self.d_connect(channel.id)
 			
 
 	def exec(self, concat_result=True):
 		self.result = []
 
-		chan = self.get_active_chans()
-		if len(chan) == 0:
+		# If there is no active chan, we dont run anything
+		if not any(self.active_chan.values()):
 			return
 
 		self.d_execute()
 		self.d_waitUntilCompleted()
 
+		meas_chan = self.get_meas_chans()
+		if len(meas_chan) == 0: # If there is no channel measuring, we stop here
+			return
+
 		for j in range(self._repeat + 1):
 			data = pd.DataFrame()
 
-			for i, channel in chan.items():
+			for i, channel in meas_chan.items():
 				if channel.meas is not None:
 					count = channel.meas.get_meas_count()
 					start_id = count * j
