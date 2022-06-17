@@ -202,7 +202,7 @@ class B1530:
 		return dict(filter(lambda i: not self.active_chan[i[0]], self.chan.items()))
 
 	def get_meas_chans(self):
-		return dict(filter(lambda c: c.meas is not None, self.chan.values()))
+		return dict(filter(lambda i: i[1].meas is not None, self.chan.items()))
 
 	def reset_configuration(self):
 		for wgfmu in self.chan.values():
