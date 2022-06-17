@@ -37,6 +37,7 @@ class State(IntEnum):
 # Command list
 class CMD(IntEnum):
 	SET_SR     = 0
+	FILL_SRs   = en_auto()
 	SET_CS     = en_auto()
 	SET_ADR_R  = en_auto()
 	SET_ADR_C  = en_auto()
@@ -58,7 +59,8 @@ CMD_COUNT = len(CMD_LIST)
 # Acknowledge Mode Flags
 class ACK(IntFlag):
 	NONE      = 0x00
-	SET_SR    = 1 << 1
+	SET_SR    = 1 << 0
+	FILL_SRs  = 1 << 1
 	SET_CS    = 1 << 2
 	SET_ADR_R = 1 << 3
 	SET_ADR_C = 1 << 4

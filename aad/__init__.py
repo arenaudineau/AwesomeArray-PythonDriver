@@ -78,16 +78,11 @@ class AwesomeArrayDriver:
 		Parameters:
 			sr_words: List[int] : The words to configure the shift registers with.
 		"""
-		for bit_id in reversed(range(SR_WORD_SIZE)):
-			for sr_id, sr_word in enumerate(sr_words):
-				self._mcd.set_sr(sr_id, (sr_word >> bit_id) & 1)
+		args = []
+		for word in sr_words:
+			args.extend(word.to_bytes(8, 'little')) # Little endiannes: bit at pos 0 will be sent first
 
-			# As all the sr share the same clk, we pulse after setting every individual inputs
-			self._mcd.clk_sr()
-
-		# Reset every inputs afterward
-		for sr_id in SR_LIST:
-				self._mcd.set_sr(sr_id, State.RESET)
+		self._mcd.fill_srs(*args)
 
 	def configure_sr(self, col: int, row: int, bar: bool, set: bool):
 		"""
