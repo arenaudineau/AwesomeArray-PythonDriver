@@ -17,9 +17,8 @@ else:
 def stderr_redirector(stream):
 	try:
 		original_stderr_fd = sys.stderr.fileno()
-	except io.UnsupportedOperation: # stderr has been remplaced by something, I dont know what to do now
-		yield
-		return
+	except io.UnsupportedOperation: # stderr has been replaced, we fall back onto __stderr__
+		original_stderr_fd = sys.__stderr__.fileno()
 	
 	saved_stderr_fd = os.dup(original_stderr_fd)
 	try:

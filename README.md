@@ -6,7 +6,8 @@ Python drivers to control the Awesome Array @ C2N.
 This library requires:  
 * ⚠️ 32 bits version of Python
 * `pyserial` version 3.5 or any other compatible version
-* `pyvisa` version 1.11.3 or any other compatible version
+* `pyvisa` version 1.12.0 or any other compatible version
+* `pandas` version 1.4.2 or any other compatible version
 * The associated NI-VISA drivers, see [the official doc](https://pyvisa.readthedocs.io/en/latest/faq/getting_nivisa.html#faq-getting-nivisa). (⚠️ 32 bits version required)
 
 ### Global installation
