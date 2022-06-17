@@ -208,7 +208,7 @@ class B1530:
 
 		self.d_initialize()
 
-	def configure(self, repeat=1):
+	def configure(self, repeat=0):
 		self.d_clear()
 
 		self._repeat = repeat
@@ -255,7 +255,7 @@ class B1530:
 				)
 
 			# Link config to the chan
-			self.d_addSequence(channel.id, self.pattern_name[i], self._repeat)
+			self.d_addSequence(channel.id, self.pattern_name[i], self._repeat + 1)
 
 			# Connect and configure wgfmu hardware
 			self.d_setOperationMode(channel.id, B1530Driver._operationMode['fastiv'])
@@ -283,7 +283,7 @@ class B1530:
 		self.d_execute()
 		self.d_waitUntilCompleted()
 
-		for j in range(self._repeat):
+		for j in range(self._repeat + 1):
 			data = pd.DataFrame()
 
 			for i, channel in chan.items():
@@ -292,7 +292,7 @@ class B1530:
 					start_id = count * j
 					end_id   = start_id + count
 
-					time, meas = self.d_getMeasureValues(channel.id, 0, count * self._repeat)
+					time, meas = self.d_getMeasureValues(channel.id, 0, count * (self._repeat + 1))
 					
 					data['tps' + channel.name] = time[start_id:end_id]
 					data[channel.name]         = meas[start_id:end_id]
