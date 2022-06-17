@@ -19,6 +19,10 @@ class AwesomeArrayDriver:
 
 		_b1530: B1530Lib.B1530
 			The driver used to control the B1530
+
+		_last_operation: int
+			Stores the last operation performed, not to reconfigure everything if it is the same
+			(-1 = None, 0 = set, 1 = reset, 2 = form, 3 = read)
 	"""
 
 	def __init__(self, uc_pid = mcd.MCDriver.DEFAULT_PID, visa_addr = B1530Lib.B1530.DEFAULT_ADDR):
@@ -34,7 +38,14 @@ class AwesomeArrayDriver:
 			pid: optional, the pid to search for.
 		"""
 		self._mcd = mcd.MCDriver(uc_pid)
-		# self._b1530 = B1530Lib.B1530(addr=visa_addr)
+		self._b1530 = B1530Lib.B1530(addr=visa_addr)
+
+		# b1530.chan[1] = Vin1_row (= GND)
+		# b1530.chan[2] = Vin1_col (= GND or measure)
+		# b1530.chan[3] = Vin2_row (= transistor Pulse)
+		# b1530.chan[4] = Vin2_col (= memristor Pulse)
+
+		self._last_operation = -1
 		
 		self.reset_state()
 
@@ -152,13 +163,36 @@ class AwesomeArrayDriver:
 		Parameters:
 			col: Address of the column
 			row: Address of the row
-			bar: If True, sets the memristor Rb instead of R
+			bar: If True, sets the complementary memristor
 		"""
 		self.configure_sr(col, row, bar, set=True)
 
-		# ...
-		# self._b1530.configure()
-		# self._b1530.exec()
+		if self._last_operation != 0:
+			self._b1530.reset_configuration()
+
+			chan = self._b1530.chan
+			
+			set_voltage    = 2
+			mosfet_voltage = 5
+
+			set_length     = 1e-5
+			set_interval   = set_length / 10
+			set_edges      = set_length / 50
+
+			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = set_interval, edges = set_edges, length = set_length * 2)
+			
+			# Devrait être le 4! Mais en attendant de le connecter
+			chan[1].wave = B1530Lib.Pulse(voltage = set_voltage, interval = set_interval + set_length, edges = set_edges, length = set_length)
+
+			set_duration = chan[3].wave.get_total_duration()
+			#chan[1].wave = B1530Lib.Waveform([[set_duration, 0]]) 
+			chan[2].wave = B1530Lib.Waveform([[set_duration, 0]]) # Force to GND (?)
+
+			self._b1530.configure()
+		self._last_operation = 0
+
+		self._b1530.exec()
+		
 
 	def reset(self, col, row, bar=False):
 		"""
@@ -167,13 +201,36 @@ class AwesomeArrayDriver:
 		Parameters:
 			col: Address of the column
 			row: Address of the row
-			bar: If True, resets the memristor Rb instead of R
+			bar: If True, resets the complementary memristor
 		"""
 		self.configure_sr(col, row, bar, set=False)
 
-		# ...
-		# self._b1530.configure()
-		# self._b1530.exec()
+		if self._last_operation != 1: # Set and Reset has same pusel profiles?
+			self._b1530.reset_configuration()
+
+			chan = self._b1530.chan
+			
+			set_voltage    = 2
+			mosfet_voltage = 5
+
+			set_length     = 1e-5
+			set_interval   = set_length / 10
+			set_edges      = set_length / 50
+
+			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = set_interval, edges = set_edges, length = set_length * 2)
+			
+			# Devrait être le 4! Mais en attendant de le connecter
+			chan[1].wave = B1530Lib.Pulse(voltage = set_voltage, interval = set_interval + set_length, edges = set_edges, length = set_length)
+
+			set_duration = chan[3].wave.get_total_duration()
+			#chan[1].wave = B1530Lib.Waveform([[set_duration, 0]]) 
+			chan[2].wave = B1530Lib.Waveform([[set_duration, 0]]) # Force to GND (?)
+
+			self._b1530.configure()
+		self._last_operation = 1
+
+		self._b1530.exec()
+		
 
 	def form(self, col, row, bar=False):
 		"""
@@ -182,10 +239,86 @@ class AwesomeArrayDriver:
 		Parameters:
 			col: Address of the column
 			row: Address of the row
-			bar: If True, forms the memristor Rb instead of R
+			bar: If True, forms the complementary memristor
 		"""
 		self.configure_sr(col, row, bar, set=True)
 
-		# ...
-		# self._b1530.configure()
-		# self._b1530.exec()
+		if self._last_operation != 2:
+			self._b1530.reset_configuration()
+
+			chan = self._b1530.chan
+			
+			form_voltage    = 3
+			mosfet_voltage = 5
+
+			form_length     = 1e-5
+			form_interval   = form_length / 10
+			form_edges      = form_length / 50
+
+			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = form_interval, edges = form_edges, length = form_length * 2)
+			
+			# Devrait être le 4! Mais en attendant de le connecter
+			chan[1].wave = B1530Lib.Pulse(voltage = form_voltage,    interval = form_interval + form_length,     edges = form_edges, length = form_length)
+
+			form_duration = chan[3].wave.get_total_duration()
+			#chan[1].wave = B1530Lib.Waveform([[form_duration, 0]]) 
+			chan[2].wave = B1530Lib.Waveform([[form_duration, 0]]) # Force to GND (?)
+
+			self._b1530.configure()
+		self._last_operation = 2
+
+		self._b1530.exec()
+		
+
+	def read(self, col, row, bar=False):
+		"""
+		Reads the memrisator value at the given address.
+		
+		Parameters:
+			col: Address of the column
+			row: Address of the row
+			bar: If True, reads the complementary memristor
+
+		Returns:
+			The memristor value
+		"""
+		self.configure_sr(col, row, bar, set=True)
+
+		read_voltage   = 1
+		mosfet_voltage = 5
+
+		read_length     = 1e-5
+		read_interval   = read_length / 10
+		read_edges      = read_length / 50
+
+		if self._last_operation != 3:
+			self._b1530.reset_configuration()
+
+			chan = self._b1530.chan
+
+			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = read_interval, edges = read_edges, length = read_length * 2)
+			
+			# Devrait être le 4! Mais en attendant de le connecter
+			chan[1].name = 'VA'
+			chan[1].wave = B1530Lib.Pulse(voltage = read_voltage, interval = read_interval + read_length, edges = read_edges, length = read_length)
+			chan[1].meas = chan[1].wave.measure(mode='voltage', range='5V', sample_rate=read_interval, average_time=read_interval)
+
+			form_duration = chan[3].wave.get_total_duration()
+			#chan[1].wave = B1530Lib.Waveform([[form_duration, 0]]) 
+			chan[2].name = 'IB'
+			chan[2].meas = chan[1].wave.measure(mode='current', range='10mA', sample_rate=read_interval, average_time=read_interval) # Measure
+
+			self._b1530.configure()
+		self._last_operation = 3
+
+		self._b1530.exec()
+		
+		data = self._b1530.result
+
+		established_idx = abs(data.VA - read_voltage) < 0.05
+		res = abs(data.VA[established_idx][1:-1] / data.IB[established_idx][1:-1])
+
+		return res.mean()
+		
+
+
