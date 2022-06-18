@@ -265,11 +265,9 @@ class B1530:
 				if time_pattern[0] == 0: # If the first time point is 0, it has been set to define the start voltage, we remove it
 					time_pattern    = time_pattern[1:]
 					voltage_pattern = voltage_pattern[1:]
-					if len(time_pattern) == 0: # If it becomes empty, we dont add vector
-						break
 
 				self.d_addVectors(self.pattern_name[i], time_pattern, voltage_pattern, len(time_pattern))
-			else:
+			elif wf.pattern[0][0] != 0: # DC setting
 				self.d_addVector(self.pattern_name[i], wf.pattern[0][0], wf.pattern[0][1])
 
 			# Configure meas
