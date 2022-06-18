@@ -301,12 +301,12 @@ class AwesomeArrayDriver:
 			# Devrait être le 4! Mais en attendant de le connecter
 			chan[1].name = 'VA'
 			chan[1].wave = B1530Lib.Pulse(voltage = read_voltage, interval = read_interval + read_length, edges = read_edges, length = read_length)
-			chan[1].meas = chan[1].wave.measure(mode='voltage', range='5V', sample_rate=read_interval, average_time=read_interval)
+			chan[1].measure_output(sample_rate=read_interval, average_time=read_interval)
 
 			form_duration = chan[3].wave.get_total_duration()
 			#chan[1].wave = B1530Lib.Waveform([[form_duration, 0]]) 
 			chan[2].name = 'IB'
-			chan[2].meas = chan[1].wave.measure(mode='current', range='10mA', sample_rate=read_interval, average_time=read_interval) # Measure
+			chan[2].meas = chan[1].measure(mode='current', range='10mA', sample_rate=read_interval, average_time=read_interval) # Measure
 
 			self._b1530.configure()
 		self._last_operation = 3

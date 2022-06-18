@@ -6,6 +6,7 @@ import pandas as pd
 
 import io
 from copy import deepcopy
+from functools import reduce
 
 ################
 # Utils function
@@ -50,6 +51,18 @@ class Waveform:
 
 	def get_total_duration(self):
 		return sum(self.get_time_pattern())
+
+	def get_max_voltage(self):
+		return reduce(lambda a, b: a if a[1] > b[1] else b, self.pattern)[1]
+
+	def get_min_voltage(self):
+		return reduce(lambda a, b: a if a[1] < b[1] else b, self.pattern)[1]
+
+	def get_max_abs_voltage(self):
+		return reduce(lambda a, b: a if abs(a[1]) > abs(b[1]) else b, self.pattern)[1]
+
+	def get_min_abs_voltage(self):
+		return reduce(lambda a, b: a if abs(a[1]) < abs(b[1]) else b, self.pattern)[1]
 
 class Pulse(Waveform):
 	def __init__(self, **kwargs):
@@ -133,6 +146,23 @@ class WGFMU:
 		self.name = name
 		self.wave = None
 		self.meas = None
+
+	def measure(self, **kwargs):
+		"""Shortcut for wgfmu.wave.measure"""
+		if self.wave is None:
+			raise ValueError("Trying to measure a 'None' waveform")
+		
+		return self.wave.measure(**kwargs)
+
+	def measure_self(self, average_time, sample_rate):
+		"""
+		Creates and sets a measurement for the current waveform.
+		It selects the adapted voltage range.
+		"""
+		max_voltage = self.wave.get_max_abs_voltage()
+		range = '10V' if max_voltage >= 5 else '5V'
+
+		self.meas = self.measure(mode='voltage', range=range, average_time=average_time, sample_rate=sample_rate)
 
 ###############
 # B1530 Wrapper
@@ -270,8 +300,10 @@ class B1530:
 				if mode == 'voltage':
 					self.d_setForceVoltageRange(channel.id, B1530Driver._forceVoltageRange['auto'])
 					self.d_setMeasureVoltageRange(channel.id, B1530Driver._measureVoltageRange[channel.meas.range])
-				else:
+				elif mode == 'current':
 					self.d_setMeasureCurrentRange(channel.id, B1530Driver._measureCurrentRange[channel.meas.range])
+				else:
+					raise ValueError('Unknown measure mode: ' + mode)
 
 			self.d_connect(channel.id)
 			
