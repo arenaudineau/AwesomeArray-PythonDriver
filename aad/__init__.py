@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 from typing import List
 
 from aad import mcd, B1530Lib
@@ -11,8 +10,8 @@ print_visa_dev = B1530Lib.print_devices
 ###############################
 # WGFMU Configuration Constants
 WGFMU_CONFIG_SET  = 0 # Set or Reset operation
-WGFMU_CONFIG_FORM = 1
-WGFMU_CONFIG_READ = 2
+WGFMU_CONFIG_FORM = 1 # Form operation
+WGFMU_CONFIG_READ = 2 # Read operation
 
 ##########################
 # class AwesomeArrayDriver
@@ -48,11 +47,6 @@ class AwesomeArrayDriver:
 		"""
 		self._mcd = mcd.MCDriver(uc_pid)
 		self._b1530 = B1530Lib.B1530(addr=visa_addr)
-
-		# b1530.chan[1] = Vin1_row (= GND)
-		# b1530.chan[2] = Vin1_col (= GND or measure)
-		# b1530.chan[3] = Vin2_row (= transistor Pulse)
-		# b1530.chan[4] = Vin2_col (= memristor Pulse)
 
 		self._last_wgfu_config = -1
 		
@@ -163,6 +157,21 @@ class AwesomeArrayDriver:
 
 	##### B1530-RELATED METHODS #####
 	def configure_wgfmu(self, config):
+		"""
+		Configures the WGFMUs with the configuration provided
+		
+		Parameters:
+			config: The configuration to apply:
+				* WGFMU_CONFIG_SET:  Configures pulses for memristor Set/Reset ;
+				* WGFMU_CONFIG_FORM: Configures pulses for memristor forming ;
+				* WGFMU_CONFIG_READ: Configures pulses and meas. for memristor value reading ;
+				
+		Details:
+			b1530.chan[1] = Vin1_row (= GND) ;
+			b1530.chan[2] = Vin1_col (= GND or measure) ;
+			b1530.chan[3] = Vin2_row (= transistor Pulse) ;
+			b1530.chan[4] = Vin2_col (= memristor Pulse) ;
+		"""
 		if self._last_wgfu_config == config:
 			return
 		
@@ -171,62 +180,50 @@ class AwesomeArrayDriver:
 		self._b1530.reset_configuration()
 		chan = self._b1530.chan
 
+		# TODO: make this a list/dict?
 		if config == WGFMU_CONFIG_SET:			
-			set_voltage    = 2
+			voltage        = 2
 			mosfet_voltage = 5
 
-			set_length     = 1e-5
-			set_interval   = set_length / 10
-			set_edges      = set_length / 50
-
-			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = set_interval, edges = set_edges, length = set_length * 2)
-			
-			# Devrait être le 4! Mais en attendant de le connecter
-			chan[1].wave = B1530Lib.Pulse(voltage = set_voltage, interval = set_interval + set_length, edges = set_edges, length = set_length)
-
-			set_duration = chan[3].wave.get_total_duration()
-			#chan[1].wave = B1530Lib.Waveform([[set_duration, 0]]) 
-			chan[2].wave = B1530Lib.Waveform([[set_duration, 0]]) # Force to GND (?)
+			length     = 1e-5
+			interval   = length / 10
+			edges      = length / 50
 		
 		elif config == WGFMU_CONFIG_FORM:
-			form_voltage    = 3
+			voltage         = 3
 			mosfet_voltage  = 5
 
-			form_length     = 1e-5
-			form_interval   = form_length / 10
-			form_edges      = form_length / 50
-
-			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = form_interval, edges = form_edges, length = form_length * 2)
-			
-			# Devrait être le 4! Mais en attendant de le connecter
-			chan[1].wave = B1530Lib.Pulse(voltage = form_voltage,    interval = form_interval + form_length,     edges = form_edges, length = form_length)
-
-			form_duration = chan[3].wave.get_total_duration()
-			#chan[1].wave = B1530Lib.Waveform([[form_duration, 0]]) 
-			chan[2].wave = B1530Lib.Waveform([[form_duration, 0]]) # Force to GND (?)
+			length     = 1e-5
+			interval   = length / 10
+			edges      = length / 50
 
 		elif config == WGFMU_CONFIG_READ:
-			read_voltage   = 1
+			voltage        = 1
 			mosfet_voltage = 5
 
-			read_length     = 1e-5
-			read_interval   = read_length / 10
-			read_edges      = read_length / 50
-
-			chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = read_interval, edges = read_edges, length = read_length * 2)
-			
-			# Devrait être le 4! Mais en attendant de le connecter
-			chan[1].name = 'VA'
-			chan[1].wave = B1530Lib.Pulse(voltage = read_voltage, interval = read_interval + read_length, edges = read_edges, length = read_length)
-			chan[1].measure_self(sample_rate=read_interval, average_time=read_interval)
-
-			form_duration = chan[3].wave.get_total_duration()
-			#chan[1].wave = B1530Lib.Waveform([[form_duration, 0]]) 
-			chan[2].name = 'IB'
-			chan[2].meas = chan[1].measure(mode='current', range='10mA', sample_rate=read_interval, average_time=read_interval) # Measure
+			length     = 1e-5
+			interval   = length / 10
+			edges      = length / 50
 
 		else:
 			raise ValueError("Unknown WGFMU config")
+			
+		chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = interval, edges = edges, length = length * 2)
+			
+		# TMP: should be chan[4]
+		chan[1].wave = B1530Lib.Pulse(voltage = voltage, interval = interval + length, edges = edges, length = length)
+
+		duration = chan[3].wave.get_total_duration()
+		#chan[1].wave = B1530Lib.Waveform([[duration, 0]]) 
+			
+		# chan[2]: Either measure and/or force to gnd
+		if config == WGFMU_CONFIG_READ:
+			chan[1].name = 'V'
+			chan[2].name = 'I'
+			chan[2].meas = chan[1].measure(mode='current', range='10mA', sample_interval=interval, average_time=interval, ignore_gnd=True) # Do not measure current when the pulse is at GND
+		else:
+			chan[2].wave = B1530Lib.Waveform([[duration, 0]]) # Force to GND
+			
 
 		self._b1530.configure()
 
@@ -241,7 +238,6 @@ class AwesomeArrayDriver:
 			bar: If True, sets the complementary memristor
 		"""
 		self.configure_sr(col, row, bar, set=True)
-		
 		self.configure_wgfmu(WGFMU_CONFIG_SET)
 		self._b1530.exec()
 		
@@ -290,13 +286,8 @@ class AwesomeArrayDriver:
 		self.configure_wgfmu(WGFMU_CONFIG_READ)
 		self._b1530.exec()
 		
-		data = self._b1530.result
-
-		established_idx = abs(data.VA - 1) < 0.05
-		res = abs(data.VA[established_idx][1:-1] / data.IB[established_idx][1:-1])
-
-		# res = abs(data.VA / data.IB)
-
+		data = self._b1530.get_result(1, 2) #todo: 4, 2
+		res = abs(data.V / data.I)
 		return res.mean()
 		
 
