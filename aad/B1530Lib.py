@@ -106,26 +106,30 @@ class Waveform:
 		for i in range(len(self.pattern)):
 			t, v = self.pattern[i]
 			last_v = self.pattern[i-1][1] if i > 0 else v
-			total_time += t
 
 			if abs(v - last_v) > 0.01 and change_sample_id is None: # Voltage change
 				change_sample_id = meas.get_id_at(total_time)
 
+				if i == len(self.pattern) - 1: # If this is the last pattern point, we wont go to the the next condition
+					meas.ignore_sample.update(range(change_sample_id, meas.get_count()))
+
 			elif abs(v - last_v) < 0.01 and change_sample_id is not None: # Voltage fixed
 				established_sample_id = min(
-					change_sample_id + int((t + setting_time) / meas.sample_interval) + 1,
+					meas.get_id_at(total_time + setting_time) + 1,
 					meas.get_count()
 				)
-
+				
 				meas.ignore_sample.update(range(change_sample_id, established_sample_id))
 
 				change_sample_id = None
 
 			if ignore_gnd and abs(last_v) < 0.01 and abs(v) < 0.01:
-				last_sample_id = meas.get_id_at(total_time - t)
-				current_sample_id = meas.get_id_at(total_time)
+				last_sample_id = meas.get_id_at(total_time)
+				current_sample_id = meas.get_id_at(total_time + t)
 
 				meas.ignore_sample.update(range(last_sample_id, current_sample_id))
+
+			total_time += t
 
 		return meas
 
@@ -172,7 +176,7 @@ class Pulse(Waveform):
 	                             /     ¦                ¦     \
 	                            /      ¦                ¦      \
 	                           /       ¦                ¦       \
-	0---■____________________■/        ¦                ¦        \■____________________■
+	0---_____________________■/        ¦                ¦        \■____________________■
 	    ^                    ^         ^                ^         ^                    ^
 	    |<----interval/2---->|<-edges->|<----length---->|<-edges->|<----interval/2---->|
 	
@@ -409,7 +413,8 @@ class B1530:
 	def reset_configuration(self):
 		"""
 		Resets the WGFMUs configuration.
-		To use after a previous one in order to start a configuration from scratch
+		To use after a previous one in order to start a configuration from scratch.
+		Keep the channels name
 		"""
 		for wgfmu in self.chan.values():
 			wgfmu.wave = None
@@ -434,7 +439,7 @@ class B1530:
 					self.active_chan[i] = False
 					continue
 				else: # If there is a meas, we overwrite the pattern accordingly so
-					channel.wave = Waveform([[channel.meas.get_total_duration() + channel.meas.average_time, 0]])
+					channel.wave = Waveform([[0,0], [channel.meas.get_total_duration(), 0]])
 			self.active_chan[i] = True
 
 			# Configure waves
@@ -514,7 +519,7 @@ class B1530:
 
 		for channel in meas_chan.values():
 			meas_count = channel.meas.get_count()
-			data = pd.DataFrame()
+			data = [] # [pd.DataFrame]
 
 			time, meas = self.d_getMeasureValues(channel.id, 0, meas_count * pattern_count)
 
@@ -522,27 +527,30 @@ class B1530:
 				start_id = meas_count * i
 				end_id   = start_id + meas_count
 
-				data['time' + channel.name] = time[start_id:end_id]
-				data[channel.name]          = meas[start_id:end_id]
+				df = pd.DataFrame()
 
-				data.drop(channel.meas.ignore_sample, inplace = True) # Drop the ignored samples
+				# datasheet tells for d_getMeasureValues:
+				# "For the averaging measurement which takes multiple data for one point measurement, the returned [time] will be (start_time + stop_time) / 2"
+				# We instead use only the start time in order to gather measurements with different average_time
+				df['time' + channel.name] = list(map(lambda t: t - channel.meas.average_time / 2, time[start_id:end_id]))
+				df[channel.name]          = meas[start_id:end_id]
+
+				df.drop(channel.meas.ignore_sample, inplace = True) # Drop the ignored samples
+				df.reset_index(drop = True, inplace = True)
+				data.append(df)
 
 			if concat_repetitions:
 				data = pd.concat(data)
-
-			data.reset_index(inplace=True, drop=True)
+				data.reset_index(drop = True, inplace = True)
+			
 			channel.meas.result = data
 
-	def get_result(self, *args, join_outer=True):
+	def get_result(self, *args):
 		"""
 		Gather the provided chans' measurements in a pandas.DataFrame
 		
 		Parameters:
 			*args: channels to select (can be theirs ids or names)
-			join_outer: Wether to perform an outer (if True) or inner (otherwise) merge
-			Details:
-				outer merge: will add NaN to missing measurements of channel compared to the other(s)
-				inner merge: will remove the extra measurements of a channel compared to the other(s)
 				
 		Returns:
 			The gathered results.
@@ -556,7 +564,6 @@ class B1530:
 				
 			elif isinstance(arg, str):
 				for c in self.chan.values():
-					print(c.name, arg)
 					if c.name == arg:
 						chan = c
 						break
@@ -564,12 +571,14 @@ class B1530:
 					raise ValueError("Unknown channel name: " + arg)
 
 			chan_time_name = 'time' + chan.name
+			
 			renamed = chan.meas.result.rename({chan_time_name: 'time'}, axis=1)
 
+			# Gather the results
 			if result is None:
 				result = renamed
 			else:
-				result = result.merge(renamed, on = 'time', how = 'outer' if join_outer else 'inner')
+				result = pd.merge_asof(result, renamed, on = 'time', direction='nearest', tolerance=1e-8)
 
 		return result
 
