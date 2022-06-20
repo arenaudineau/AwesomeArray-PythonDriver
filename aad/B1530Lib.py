@@ -40,8 +40,9 @@ class Waveform:
 
 	def repeat(self, count):
 		"""Repeat this waveform 'count' times. Returns self in order to chain the calls"""
+		pat = cp.deepcopy(self.pattern)
 		for _ in range(count):
-			self.pattern.extend(cp.deepcopy(self.pattern))
+			self.pattern.extend(cp.deepcopy(pat))
 		return self
 	
 	def measure(self, start_delay = 0, ignore_gnd=False, **kwargs):
