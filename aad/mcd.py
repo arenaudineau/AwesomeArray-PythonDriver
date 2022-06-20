@@ -259,7 +259,7 @@ class MCDriver:
 
 		cmd_name = str(command)[4:] # str(command) == CMD.XXX => str(command)[4:] == XXX
 		wait_for_ack = (cmd_name in str(self.uc_ack_mode))
-		cmd_returns = (cmd_name not in str(ACK_ALL)) # If the commands does not have an associated ack, it is because it returns something
+		cmd_returns = (cmd_name not in str(ACK_ALL)) and command != CMD.ACK_MODE # If the commands does not have an associated ack, it is because it returns something
 
 		if command == CMD.ACK_MODE and args[0] != ACK.NONE:
 			wait_for_ack = True
