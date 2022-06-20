@@ -177,7 +177,7 @@ class AwesomeArrayDriver:
 		
 		self._last_wgfu_config = config
 
-		self._b1530.reset_configuration()
+		#self._b1530.reset_configuration()
 		chan = self._b1530.chan
 
 		# TODO: make this a list/dict?
@@ -219,10 +219,11 @@ class AwesomeArrayDriver:
 		# chan[2]: Either measure and/or force to gnd
 		if config == WGFMU_CONFIG_READ:
 			chan[1].name = 'V'
+			chan[1].measure_self(sample_interval=interval, average_time=interval, ignore_gnd=True)
 			chan[2].name = 'I'
 			chan[2].meas = chan[1].measure(mode='current', range='10mA', sample_interval=interval, average_time=interval, ignore_gnd=True) # Do not measure current when the pulse is at GND
 		else:
-			chan[2].wave = B1530Lib.Waveform([[duration, 0]]) # Force to GND
+			chan[2].wave = B1530Lib.Waveform([[0, 0], [duration, 0]]) # Force to GND
 			
 
 		self._b1530.configure()
