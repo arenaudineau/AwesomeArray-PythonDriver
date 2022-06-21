@@ -138,7 +138,7 @@ class AwesomeArrayDriver:
 		for bit_id in reversed(range(SR_WORD_SIZE)):
 			for sr_id, sr_word in enumerate(sr_words):
 				set_val = (((sr_word >> bit_id) & 1) == 1)
-				sr_val = self._mcd.get_ctl(sr_id)
+				sr_val = (self._mcd.get_ctl(sr_id) == State.SET)
 
 				sanity[sr_id][bit_id] = (set_val == sr_val)
 
@@ -213,10 +213,10 @@ class AwesomeArrayDriver:
 		else:
 			raise ValueError("Unknown WGFMU config")
 			
-		chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = interval, edges = edges, length = length * 2)
+		chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = interval + length, edges = edges, length = length).repeat(10)
 			
 		# TMP: should be chan[4]
-		chan[1].wave = B1530Lib.Pulse(voltage = voltage, interval = interval + length, edges = edges, length = length)
+		chan[1].wave = B1530Lib.Pulse(voltage = voltage, interval = interval, edges = edges, length = length * 2).repeat(10)
 
 		duration = chan[3].wave.get_total_duration()
 		#chan[1].wave = B1530Lib.Waveform([[duration, 0]]) 
