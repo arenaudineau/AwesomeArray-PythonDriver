@@ -28,9 +28,8 @@ class AwesomeArrayDriver:
 		_b1530: B1530Lib.B1530
 			The driver used to control the B1530
 
-		_last_operation: int
-			Stores the last operation performed, not to reconfigure everything if it is the same
-			(-1 = None, 0 = set, 1 = reset, 2 = form, 3 = read)
+		_last_wgfu_config: int
+			Stores the last operation performed, not to reconfigure everything if it is the same (see 'WGFMU Configuration Constants')
 	"""
 
 	def __init__(self, uc_pid = mcd.MCDriver.DEFAULT_PID, visa_addr = B1530Lib.B1530.DEFAULT_ADDR):
@@ -46,7 +45,12 @@ class AwesomeArrayDriver:
 			pid: optional, the pid to search for.
 		"""
 		self._mcd = mcd.MCDriver(uc_pid)
-		self._b1530 = B1530Lib.B1530(addr=visa_addr)
+
+		try:
+			self._b1530 = B1530Lib.B1530(addr=visa_addr)
+		except Exception as e:
+			self._mcd.ser.close()
+			raise e
 
 		self._last_wgfu_config = -1
 		
@@ -58,6 +62,7 @@ class AwesomeArrayDriver:
 		"""
 		self._mcd.flush_input()
 		self._mcd.ack_mode(mcd.ACK_ALL)
+		self._mcd.set_cs(mcd.CS.CARAC_EN, State.SET) # Enable CARAC MODE
 
 	##### µC-RELATED METHODS #####
 	def get_sr_configuration(self, col: int, row: int, bar: bool, set: bool):
