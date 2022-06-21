@@ -1,3 +1,5 @@
+from asyncio import set_child_watcher
+from matplotlib.pyplot import step
 from aad.extlibs import B1530Driver
 from aad.extlibs.stderr_redirect import stderr_redirector
 import pyvisa as visa
@@ -69,8 +71,8 @@ class Waveform:
 			#  last_v---■___________________■/     ¦                ¦      |           #
 			#           ^                   ^      ^                ^      -           #
 			#           ¦<----------------->¦<-t ->¦                ¦                  #
-			#           |when two consecut. ¦<--------------------->¦                  #
-			#   v == 0, ignore_gnd?         | we ignore everything in between          #
+			#   ________|when two consecut. ¦<--------------------->¦________          #
+			#  /v == 0, ignore_gnd?         | we ignore everything in between\         #
 			#                                                                          #
 			#  '■' are points stored in self.pattern                                   #
 			#                                                                          #
@@ -237,6 +239,96 @@ class Pulse(Waveform):
 	def voltage(self, value):
 		self.pattern[1][1] = value
 		self.pattern[2][1] = value
+
+#############
+# DC Waveform
+#############
+class DC(Waveform):
+	"""
+	DC Voltage
+
+	Special type of waveform to help generate constant voltage.
+
+	The only parameter is the voltage
+	"""
+
+	def __init__(self, voltage):
+		self.pattern = [[0,0]]
+		self.voltage = voltage
+
+	@property
+	def voltage(self):
+		return self.pattern[0][1]
+
+	@voltage.setter
+	def voltage(self, value):
+		self.pattern[0][1] = value
+
+###############
+# Step Waveform
+###############
+class Step(Waveform):
+	""""
+	Step Waveform
+
+	Special type of waveform to help generate step voltages.
+  
+	See the parameters below:  
+	
+	======================================================================================
+
+	end_voltage-------------------------------■______■     ----step #3 == step_count
+	                                         /        \
+	                                        /         ¦|
+	                               ■______■/          ¦|   ----step #2
+	                              /                   ¦|
+	                             /                    ¦ \
+	                    ■______■/                     ¦  | ----step #1
+	                   /¦      ¦                      ¦  |
+	                  / ¦      ¦                      ¦  |
+	init_voltage-----/  ¦      ¦                      ¦  \■__■
+	                 ^  ^      ^                      ^  ^   ^
+	                 |<>|<---->|____                  ¦<>|<->¦___________
+	                 |  |step_length\           ______¦  |step_length ÷ 2\
+	                 |_________                /jump_time|   ¦
+	                 |jump_time\                      ¦<---->¦ <= only if end_reset=True
+	"""
+	def __init__(self, jump_time, step_length, end_voltage, step_count, init_voltage=0, end_reset=True):
+		attributes = {
+			'jump_time':    jump_time,
+			'step_count':   step_count,
+			'jump_time':    jump_time,
+			'step_length':  step_length,
+			'init_voltage': init_voltage,
+			'end_voltage':  end_voltage,
+			'end_reset':    end_reset,
+		}
+
+		for name, val in attributes.items():
+			def gen_get(attr_name):
+				return lambda: getattr(self, attr_name)
+
+			def gen_set(attr_name):
+				def set(self, val):
+					setattr(self, '_' + attr_name, val)
+					self.__gen()
+
+				return set
+
+			setattr(self, '_' + name, val)
+			setattr(self, name, property(gen_get(name), gen_set(name)))
+
+		self.__gen()
+
+	def __gen(self):
+		step_voltage = (self._end_voltage - self._init_voltage) / self._step_count
+
+		self.pattern = []
+		for i in range(self._step_count + 1):
+				self.pattern.extend([[self._jump_time, self._init_voltage + i * step_voltage], [self._step_length, self._init_voltage + i * step_voltage]])
+			
+		if self._end_reset:
+			self.pattern.extend([[self._jump_time, self._init_voltage], [self._step_length / 2, self._init_voltage]])
 
 ###################
 # Measurement class
