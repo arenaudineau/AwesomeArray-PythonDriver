@@ -395,7 +395,7 @@ class WGFMU:
 		self.meas = None
 
 	def measure(self, **kwargs):
-		"""Shortcut for wgfmu.wave.measure"""
+		"""Shorthand for wgfmu.wave.measure"""
 		if self.wave is None:
 			raise ValueError("Trying to measure a 'None' waveform")
 		
