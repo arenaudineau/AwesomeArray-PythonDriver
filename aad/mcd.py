@@ -88,10 +88,10 @@ CS_COUNT = len(CS_LIST)
 #################
 # Utils function
 def as_int(b: bytes) -> int:
-	return int.from_bytes(b, 'big')
+	return int.from_bytes(b, 'little')
 
 def as_bytes(i: int) -> bytes:
-	return i.to_bytes(max((i.bit_length() + 7) // 8, 1), 'big')
+	return i.to_bytes(max((i.bit_length() + 7) // 8, 1), 'little')
 
 #################
 # Driver class
