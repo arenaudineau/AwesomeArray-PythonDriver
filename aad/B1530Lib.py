@@ -1,5 +1,3 @@
-from asyncio import set_child_watcher
-from matplotlib.pyplot import step
 from aad.extlibs import B1530Driver
 from aad.extlibs.stderr_redirect import stderr_redirector
 import pyvisa as visa
@@ -288,9 +286,9 @@ class Step(Waveform):
 	                  / ¦      ¦                      ¦  |
 	init_voltage-----/  ¦      ¦                      ¦  \■__■
 	                 ^  ^      ^                      ^  ^   ^
-	                 |<>|<---->|____                  ¦<>|<->¦___________
-	                 |  |step_length\           ______¦  |step_length ÷ 2\
-	                 |_________                /jump_time|   ¦
+	                 |<>|<---->|____          ________¦<>|<->¦_____________
+	                 |  |step_length\        / jump_time | step_length ÷ 2 \
+	                 |  |______                       ¦      ¦
 	                 |jump_time\                      ¦<---->¦ <= only if end_reset=True
 	"""
 	def __init__(self, jump_time, step_length, end_voltage, step_count, init_voltage=0, end_reset=True):
@@ -332,6 +330,7 @@ class Step(Waveform):
 
 ###################
 # Measurement class
+###################
 class Measurement:
 	"""
 	Measurement class
@@ -502,6 +501,12 @@ class B1530:
 	def get_meas_chans(self):
 		"""Returns the list of channels that make a measurement"""
 		return dict(filter(lambda i: i[1].meas is not None, self.chan.items()))
+
+	def add_channel(self, id: int, hardware_chan: int, name = None):
+		if name is None:
+			name = chr(64 + id) # 1 <-> 'A', ..., 26 <-> 'Z'
+		
+		self.chan[id] = WGFMU(hardware_chan, name)
 
 	def reset_configuration(self):
 		"""
