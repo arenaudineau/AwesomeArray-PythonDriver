@@ -36,6 +36,9 @@ sudo usermod -aG dialout $USER
 </p>
 
 ## Usage
+### Wiki
+Here is a complete wiki on how to use this library: [wiki](wiki).
+
 ### Awesome Array Driver
 The high-level driver intended to be used.  
 See [`demo/aadriver.ipynb`](demo/aadriver.ipynb) for a demo. 
