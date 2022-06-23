@@ -59,14 +59,14 @@ CMD_COUNT = len(CMD_LIST)
 # Acknowledge Mode Flags
 class ACK(IntFlag):
 	NONE      = 0x00
-	SET_SR    = 1 << 0
-	FILL_SRs  = 1 << 1
-	SET_CS    = 1 << 2
-	SET_ADR_R = 1 << 3
-	SET_ADR_C = 1 << 4
-	CLK       = 1 << 5
-	CLK_SR    = 1 << 6
-	CLK_XNOR  = 1 << 7
+	SET_SR    = en_auto()
+	FILL_SRs  = en_auto()
+	SET_CS    = en_auto()
+	SET_ADR_R = en_auto()
+	SET_ADR_C = en_auto()
+	CLK       = en_auto()
+	CLK_SR    = en_auto()
+	CLK_XNOR  = en_auto()
 
 ACK_LIST = list(ACK.__members__.values())
 ACK_ALL = reduce(or_, ACK_LIST)
@@ -88,10 +88,10 @@ CS_COUNT = len(CS_LIST)
 #################
 # Utils function
 def as_int(b: bytes) -> int:
-	return int.from_bytes(b, 'big')
+	return int.from_bytes(b, 'little')
 
 def as_bytes(i: int) -> bytes:
-	return i.to_bytes(max((i.bit_length() + 7) // 8, 1), 'big')
+	return i.to_bytes(max((i.bit_length() + 7) // 8, 1), 'little')
 
 #################
 # Driver class
