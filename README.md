@@ -37,7 +37,7 @@ sudo usermod -aG dialout $USER
 
 ## Usage
 ### Wiki
-Here is a complete wiki on how to use this library: [wiki](wiki).
+Here is a complete wiki on how to use this library: [wiki](https://github.com/arenaudineau/AwesomeArray-PythonDriver/wiki).
 
 ### Awesome Array Driver
 The high-level driver intended to be used.  
