@@ -45,22 +45,23 @@ class Waveform:
 			self.pattern.extend(cp.deepcopy(pat))
 		return self
 	
-	def measure(self, start_delay = 0, ignore_gnd=False, **kwargs):
+	def measure(self, start_delay = 0, ignore_gnd=False, ignore_edges=True, ignore_setting=True, **kwargs):
 		"""
 		Creates a measurement with the provided parameters adapted to the waveform.
 		
 		Parameters:
 			**kwargs, start_delay : default parameters required to construct B1530Lib.Measurement ;
-			ignore_gnd: bool : Whether to ignore (when retrieving the measurements) the measurement samples when the waveform voltage is zero ;
+			ignore_gnd:     bool : Whether to ignore (when retrieving the measurements) the measurement samples when the waveform voltage is zero ;
+			ignore_edges:   bool : Whether to ignore the meas. samples when the wave is rising or falling
+			ignore_setting: bool : Whether to ignore the meas. samples during the setting time of the B1530
 			
 		Details:
-			This function will create a measurement that ignores samples that may give erroneous results after the voltage is changed.
 			The 'setting_time' values come from the official B1530A datasheet.
 			
 			############################################################################
 			#                                                                          #
 			#                                      |<-setting_time->|      ^ Voltage   #
-			#  v-----------------------------------■________________•___   |           #
+			#  v-----------------------------------■________________•___■  |           #
 			#                                     /¦                ¦      |           #
 			#                                    / ¦                ¦      |           #
 			#                                   /  ¦                ¦      |           #
@@ -69,8 +70,10 @@ class Waveform:
 			#  last_v---■___________________■/     ¦                ¦      |           #
 			#           ^                   ^      ^                ^      -           #
 			#           ¦<----------------->¦<-t ->¦                ¦                  #
-			#   ________|when two consecut. ¦<--------------------->¦________          #
-			#  /v == 0, ignore_gnd?         | we ignore everything in between\         #
+			#   ________|when two consecut. ¦      ¦<-------------->¦                  #
+			#  /v == 0, ignore_gnd?         ¦      | ignore_setting? \                 #
+			#                               |      |_______                            #
+			#                               |ignore_edges? \                           #
 			#                                                                          #
 			#  '■' are points stored in self.pattern                                   #
 			#                                                                          #
@@ -102,35 +105,64 @@ class Waveform:
 		# else:
 		# 	Unknown mode, self.configure will raise except for us		
 
-		change_sample_id = None
-		total_time = 0
-		for i in range(len(self.pattern)):
-			t, v = self.pattern[i]
-			last_v = self.pattern[i-1][1] if i > 0 else v
+		start_edge_time = None
+		current_time = 0
+		for i in range(len(self.pattern) - 1):
+			duration, v = self.pattern[i]
+			next_duration, next_v = self.pattern[i+1]
+			
+			current_time += duration
 
-			if abs(v - last_v) > 0.01 and change_sample_id is None: # Voltage change
-				change_sample_id = meas.get_id_at(total_time)
+			### IGNORE_EDGES/SETTING ###
+			if (ignore_edges or ignore_setting) and abs(next_v - v) > 0.01 and start_edge_time is None: # Voltage change
+				start_edge_time = current_time
 
-				if i == len(self.pattern) - 1: # If this is the last pattern point, we wont go to the the next condition
-					meas.ignore_sample.update(range(change_sample_id, meas.get_count()))
+			if abs(next_v - v) < 0.01 and start_edge_time is not None: # Voltage fixed
+				start_ignore_time = current_time
+				end_ignore_time = current_time
 
-			elif abs(v - last_v) < 0.01 and change_sample_id is not None: # Voltage fixed
-				established_sample_id = min(
-					meas.get_id_at(total_time + setting_time) + 1,
-					meas.get_count()
-				)
-				
-				meas.ignore_sample.update(range(change_sample_id, established_sample_id))
+				if ignore_edges:
+					start_ignore_time = start_edge_time
 
-				change_sample_id = None
+				if ignore_setting:
+					end_ignore_time += setting_time
 
-			if ignore_gnd and abs(last_v) < 0.01 and abs(v) < 0.01:
-				last_sample_id = meas.get_id_at(total_time)
-				current_sample_id = meas.get_id_at(total_time + t)
+				start_ignore_id = meas.get_id_at(start_ignore_time)
+				if end_ignore_time >= meas.get_total_duration():
+					end_ignore_id = meas.get_count()
+				else:
+					end_ignore_id = meas.get_id_at(end_ignore_time) + 1
 
-				meas.ignore_sample.update(range(last_sample_id, current_sample_id))
+				meas.ignore_sample.update(range(
+						start_ignore_id,
+						end_ignore_id
+				))
 
-			total_time += t
+				start_edge_time = None				
+
+			### IGNORE_GND ###
+			if ignore_gnd:
+				if abs(next_v) < 0.01 and abs(v) < 0.01:  
+					# Ignore starting from current point to next one
+					start_ignore_time = current_time 
+					end_ignore_time   = current_time + next_duration
+
+					if end_ignore_time >= meas.get_total_duration() or i == len(self.pattern) - 2: # ... or if it is the second last, we ignore all the end
+						end_ignore_id = meas.get_count()
+					else:
+						end_ignore_id = meas.get_id_at(end_ignore_time) + 1
+
+					meas.ignore_sample.update(range(
+						meas.get_id_at(start_ignore_time),
+						end_ignore_id
+					))
+
+				elif i == 0 and abs(v) < 0.01:
+					# Ignore from the start to current point
+					meas.ignore_sample.update(range(
+						0,
+						meas.get_id_at(current_time) + 1
+					))
 
 		return meas
 
@@ -401,7 +433,7 @@ class WGFMU:
 		
 		return self.wave.measure(**kwargs)
 
-	def measure_self(self, average_time, sample_interval, ignore_gnd=False):
+	def measure_self(self, **kwargs):
 		"""
 		Creates and sets a measurement for the current waveform.
 		It selects the adapted voltage range.
@@ -409,7 +441,7 @@ class WGFMU:
 		max_voltage = self.wave.get_max_abs_voltage()
 		range = '10V' if max_voltage >= 5 else '5V'
 
-		self.meas = self.measure(mode='voltage', range=range, average_time=average_time, sample_interval=sample_interval, ignore_gnd=ignore_gnd)
+		self.meas = self.measure(mode='voltage', range=range, **kwargs)
 
 ###############
 # B1530 Wrapper
