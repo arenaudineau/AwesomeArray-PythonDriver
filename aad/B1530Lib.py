@@ -307,16 +307,16 @@ class Step(Waveform):
 	
 	======================================================================================
 
-	end_voltage-------------------------------■______■     ----step #3 == step_count
+	end_voltage-------------------------------■______■            ----step #3 == step_count
 	                                         /        \
 	                                        /         ¦|
-	                               ■______■/          ¦|   ----step #2
+	                               ■______■/          ¦|          ----step #2
 	                              /                   ¦|
 	                             /                    ¦ \
-	                    ■______■/                     ¦  | ----step #1
+	                    ■______■/                     ¦  |        ----step #1
 	                   /¦      ¦                      ¦  |
 	                  / ¦      ¦                      ¦  |
-	init_voltage-----/  ¦      ¦                      ¦  \■__■
+	init_voltage-----/  ¦      ¦                      ¦  \■__■    ----step #0
 	                 ^  ^      ^                      ^  ^   ^
 	                 |<>|<---->|____          ________¦<>|<->¦_____________
 	                 |  |step_length\        / jump_time | step_length ÷ 2 \
@@ -354,7 +354,7 @@ class Step(Waveform):
 		step_voltage = (self._end_voltage - self._init_voltage) / self._step_count
 
 		self.pattern = []
-		for i in range(self._step_count + 1):
+		for i in range(self._step_count):
 				self.pattern.extend([[self._jump_time, self._init_voltage + i * step_voltage], [self._step_length, self._init_voltage + i * step_voltage]])
 			
 		if self._end_reset:
