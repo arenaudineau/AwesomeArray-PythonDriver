@@ -355,7 +355,7 @@ class Step(Waveform):
 
 		self.pattern = []
 		for i in range(self._step_count):
-				self.pattern.extend([[self._jump_time, self._init_voltage + i * step_voltage], [self._step_length, self._init_voltage + i * step_voltage]])
+				self.pattern.extend([[self._jump_time if i != 0 else 0, self._init_voltage + i * step_voltage], [self._step_length, self._init_voltage + i * step_voltage]])
 			
 		if self._end_reset:
 			self.pattern.extend([[self._jump_time, self._init_voltage], [self._step_length / 2, self._init_voltage]])
