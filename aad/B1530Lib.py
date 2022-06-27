@@ -45,7 +45,7 @@ class Waveform:
 			self.pattern.extend(cp.deepcopy(pat))
 		return self
 	
-	def measure(self, start_delay = 0, ignore_gnd=False, ignore_edges=True, ignore_setting=True, **kwargs):
+	def measure(self, start_delay = 0, ignore_gnd=False, ignore_edges=True, ignore_settling=True, **kwargs):
 		"""
 		Creates a measurement with the provided parameters adapted to the waveform.
 		
@@ -53,31 +53,31 @@ class Waveform:
 			**kwargs, start_delay : default parameters required to construct B1530Lib.Measurement ;
 			ignore_gnd:     bool : Whether to ignore (when retrieving the measurements) the measurement samples when the waveform voltage is zero ;
 			ignore_edges:   bool : Whether to ignore the meas. samples when the wave is rising or falling
-			ignore_setting: bool : Whether to ignore the meas. samples during the settling time of the B1530
+			ignore_settling: bool : Whether to ignore the meas. samples during the settling time of the B1530
 			
 		Details:
-			The 'setting_time' values come from the official B1530A datasheet.
+			The 'settling_time' values come from the official B1530A datasheet.
 			
-			############################################################################
-			#                                                                          #
-			#                                      |<-setting_time->|      ^ Voltage   #
-			#  v-----------------------------------■________________•___■  |           #
-			#                                     /¦                ¦      |           #
-			#                                    / ¦                ¦      |           #
-			#                                   /  ¦                ¦      |           #
-			#                                  /   ¦                ¦      |           #
-			#                                 /    ¦                ¦      |           #
-			#  last_v---■___________________■/     ¦                ¦      |           #
-			#           ^                   ^      ^                ^      -           #
-			#           ¦<----------------->¦<-t ->¦                ¦                  #
-			#   ________|when two consecut. ¦      ¦<-------------->¦                  #
-			#  /v == 0, ignore_gnd?         ¦      | ignore_setting? \                 #
-			#                               |      |_______                            #
-			#                               |ignore_edges? \                           #
-			#                                                                          #
-			#  '■' are points stored in self.pattern                                   #
-			#                                                                          #
-			############################################################################
+			#############################################################################
+			#                                                                           #
+			#                                      |<-settling_time->|      ^ Voltage   #
+			#  v-----------------------------------■_________________•___■  |           #
+			#                                     /¦                 ¦      |           #
+			#                                    / ¦                 ¦      |           #
+			#                                   /  ¦                 ¦      |           #
+			#                                  /   ¦                 ¦      |           #
+			#                                 /    ¦                 ¦      |           #
+			#  last_v---■___________________■/     ¦                 ¦      |           #
+			#           ^                   ^      ^                 ^      -           #
+			#           ¦<----------------->¦<-t ->¦                 ¦                  #
+			#   ________|when two consecut. ¦      ¦<------------è-->¦                  #
+			#  /v == 0, ignore_gnd?         ¦      | ignore_settling? \                 #
+			#                               |      |_______                             #
+			#                               |ignore_edges? \                            #
+			#                                                                           #
+			#  '■' are points stored in self.pattern                                    #
+			#                                                                           #
+			#############################################################################
 			
 		Returns:
 			The measurement created.
@@ -87,15 +87,15 @@ class Waveform:
 		meas = Measurement(**kwargs)
 
 		# From B1530A datasheet
-		setting_time = 0
+		settling_time = 0
 		if meas.mode == 'voltage':
-			setting_time = {
+			settling_time = {
 				'5V':  85e-9,
 				'10V': 110e-9,
 			}[meas.range]
 
 		elif meas.mode == 'current':
-			setting_time = {
+			settling_time = {
 				'1uA':   37e-6,
 				'10uA':  5.8e-6,
 				'100uA': 820e-9,
@@ -114,7 +114,7 @@ class Waveform:
 			current_time += duration
 
 			### IGNORE_EDGES/SETTING ###
-			if (ignore_edges or ignore_setting) and abs(next_v - v) > 0.01 and start_edge_time is None: # Voltage change
+			if (ignore_edges or ignore_settling) and abs(next_v - v) > 0.01 and start_edge_time is None: # Voltage change
 				start_edge_time = current_time
 
 			if abs(next_v - v) < 0.01 and start_edge_time is not None: # Voltage fixed
@@ -124,8 +124,9 @@ class Waveform:
 				if ignore_edges:
 					start_ignore_time = start_edge_time
 
-				if ignore_setting:
-					end_ignore_time += setting_time
+
+				if ignore_settling:
+					end_ignore_time += settling_time
 
 				start_ignore_id = meas.get_id_at(start_ignore_time)
 				if end_ignore_time >= meas.get_total_duration():
