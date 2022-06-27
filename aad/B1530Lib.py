@@ -53,7 +53,7 @@ class Waveform:
 			**kwargs, start_delay : default parameters required to construct B1530Lib.Measurement ;
 			ignore_gnd:     bool : Whether to ignore (when retrieving the measurements) the measurement samples when the waveform voltage is zero ;
 			ignore_edges:   bool : Whether to ignore the meas. samples when the wave is rising or falling
-			ignore_setting: bool : Whether to ignore the meas. samples during the setting time of the B1530
+			ignore_setting: bool : Whether to ignore the meas. samples during the settling time of the B1530
 			
 		Details:
 			The 'setting_time' values come from the official B1530A datasheet.
@@ -584,7 +584,7 @@ class B1530:
 					voltage_pattern = voltage_pattern[1:]
 
 				self.d_addVectors(self.pattern_name[i], time_pattern, voltage_pattern, len(time_pattern))
-			elif wf.pattern[0][0] != 0: # DC setting
+			elif wf.pattern[0][0] != 0: # DC settling
 				self.d_addVector(self.pattern_name[i], wf.pattern[0][0], wf.pattern[0][1])
 
 			# Configure meas
