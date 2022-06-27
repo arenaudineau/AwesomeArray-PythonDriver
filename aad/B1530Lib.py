@@ -624,13 +624,13 @@ class B1530:
 			self.d_connect(channel.id)
 			
 
-	def exec(self, concat_repetitions=True):
+	def exec(self, concat_repetitions=False):
 		"""
 		Executes the WGFMUs patterns (waveform generation and/or measurements)
 		
 		Parameters:
 			concat_repetitions: bool : Concat, or keep in an array, the different measurements results associated to the repetitions
-			
+
 		Details:
 			Executes the patterns and store the measurement results in chan[i].meas.result
 			in pandas.DataFrame with column 'time + {channel.name}' for the time associated with the measurement '{channel.name}'
@@ -674,7 +674,7 @@ class B1530:
 				data = pd.concat(data)
 				data.reset_index(drop = True, inplace = True)
 			
-			channel.meas.result = data
+			channel.meas.result = data if len(data) > 1 else data[0]
 
 	def get_result(self, *args):
 		"""
@@ -685,31 +685,64 @@ class B1530:
 				
 		Returns:
 			The gathered results.
+
+		Details:
+			If there are repetitions, returns results in an array with matching indices
 		"""
-		result = None
+		pattern_count = None
 
-		for arg in args:
-			chan = None
-			if isinstance(arg, int):
-				chan = self.chan[arg]
-				
-			elif isinstance(arg, str):
-				for c in self.chan.values():
-					if c.name == arg:
-						chan = c
-						break
-				if chan is None:
-					raise ValueError("Unknown channel name: " + arg)
+		for meas_chan in self.get_meas_chans().values():
+			res = meas_chan.meas.result
 
-			chan_time_name = 'time' + chan.name
-			
-			renamed = chan.meas.result.rename({chan_time_name: 'time'}, axis=1)
-
-			# Gather the results
-			if result is None:
-				result = renamed
+			if pattern_count is None:
+				pattern_count = 1 if isinstance(res, pd.DataFrame) else len(res)
 			else:
-				result = pd.merge_asof(result, renamed, on = 'time', direction='nearest', tolerance=1e-8)
+				# I do not really know how that could happen but at least we would get a nice error message
+				if isinstance(res, pd.DataFrame):
+					if pattern_count != 1:
+						raise ValueError(f"Incompatible measurement pattern count ({pattern_count}) with channel '{meas_chan.name}' (1)")
+				elif len(res) != pattern_count:
+					raise ValueError(f"Incompatible measurement pattern count ({pattern_count}) with channel '{meas_chan.name}' ({len(res)})")
 
-		return result
+		result = [None for _ in range(pattern_count)]
+		chans  = [None for _ in range(len(args))]
+
+		for res_idx in range(len(result)):
+			for arg_idx, arg in enumerate(args):
+				chan = chans[arg_idx]
+
+				if chan is None:
+					if isinstance(arg, int):
+						if arg > len(self.chan):
+							raise ValueError("Unknown channel id: " + str(arg))
+						
+						chan = self.chan[arg]
+						
+					elif isinstance(arg, str):
+						for c in self.chan.values():
+							if c.name == arg:
+								chan = c
+								break
+						if chan is None:
+							raise ValueError("Unknown channel name: " + arg)
+
+					if chan.meas is None:
+						raise ValueError("Trying to retrieve measures of a non-measure chan '" + chan.name + "'")
+					
+					chans[arg_idx] = chan
+
+				chan_time_name = 'time' + chan.name
+				
+				if pattern_count == 1:
+					renamed = chan.meas.result.rename({chan_time_name: 'time'}, axis=1)
+				else:
+					renamed = chan.meas.result[res_idx].rename({chan_time_name: 'time'}, axis=1)
+
+				# Gather the results
+				if result[res_idx] is None:
+					result[res_idx] = renamed
+				else:
+					result[res_idx] = pd.merge_asof(result[res_idx], renamed, on = 'time', direction='nearest', tolerance=1e-8) # 1e-8s == 10ns is the shortest time scale the B1530 can handle
+
+		return result if len(result) > 1 else result[0]
 
