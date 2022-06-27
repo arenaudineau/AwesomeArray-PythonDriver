@@ -142,6 +142,8 @@ class AwesomeArrayDriver:
 
 				sanity[sr_id][bit_id] = (set_val == sr_val)
 
+			self._mcd.clk_sr() # Shift once
+
 		return sanity
 
 	def test_sr_sanity(self, col: int, row: int, bar: bool, set: bool):
@@ -191,7 +193,7 @@ class AwesomeArrayDriver:
 			mosfet_voltage = 5
 
 			length     = 1e-5
-			interval   = length / 10
+			interval   = 5e-3
 			edges      = length / 50
 		
 		elif config == WGFMU_CONFIG_FORM:
@@ -213,20 +215,18 @@ class AwesomeArrayDriver:
 		else:
 			raise ValueError("Unknown WGFMU config")
 			
-		chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = interval + length, edges = edges, length = length).repeat(10)
-			
-		# TMP: should be chan[4]
-		chan[1].wave = B1530Lib.Pulse(voltage = voltage, interval = interval, edges = edges, length = length * 2).repeat(10)
+		chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = interval + length, edges = edges, length = length)
+		chan[4].wave = B1530Lib.Pulse(voltage = voltage, interval = interval, edges = edges, length = length * 2)
 
 		duration = chan[3].wave.get_total_duration()
-		#chan[1].wave = B1530Lib.Waveform([[duration, 0]]) 
+		chan[1].wave = B1530Lib.Waveform([[0, 0], [duration, 0]]) # Force to GND
 			
 		# chan[2]: Either measure and/or force to gnd
 		if config == WGFMU_CONFIG_READ:
-			chan[1].name = 'V'
-			chan[1].measure_self(sample_interval=interval, average_time=interval, ignore_gnd=True)
+			chan[4].name = 'V'
+			chan[4].measure_self(sample_interval=interval, average_time=interval, ignore_gnd=True)
 			chan[2].name = 'I'
-			chan[2].meas = chan[1].measure(mode='current', range='10mA', sample_interval=interval, average_time=interval, ignore_gnd=True) # Do not measure current when the pulse is at GND
+			chan[2].meas = chan[4].measure(mode='current', range='10mA', sample_interval=interval, average_time=interval, ignore_gnd=True) # Do not measure current when the pulse is at GND
 		else:
 			chan[2].wave = B1530Lib.Waveform([[0, 0], [duration, 0]]) # Force to GND
 			
@@ -292,7 +292,7 @@ class AwesomeArrayDriver:
 		self.configure_wgfmu(WGFMU_CONFIG_READ)
 		self._b1530.exec()
 		
-		data = self._b1530.get_result(1, 2) #todo: 4, 2
+		data = self._b1530.get_result(4, 2)
 		res = abs(data.V / data.I)
 		return res.mean()
 		
