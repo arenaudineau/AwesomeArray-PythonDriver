@@ -215,13 +215,15 @@ class Pulse(Waveform):
 	    |<----interval/2---->|<-edges->|<----length---->|<-edges->|<----interval/2---->|
 	
 	"""
-	def __init__(self, voltage, interval, edges, length):
+	def __init__(self, voltage, interval, edges, length, init_voltage=0):
 		self.pattern = [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]
 		
 		self.voltage  = voltage
 		self.interval = interval
 		self.edges    = edges
 		self.length   = length
+
+		self.init_voltage = init_voltage
 
 	@property
 	def interval(self):
@@ -247,8 +249,8 @@ class Pulse(Waveform):
 
 	@property
 	def edges(self):
-		lead  = self.pattern[1][0]
-		trail = self.pattern[3][0]
+		lead  = self.lead
+		trail = self.trail
 		if lead == trail:
 			return lead
 		else:
@@ -256,7 +258,23 @@ class Pulse(Waveform):
 
 	@edges.setter
 	def edges(self, value):
+		self.lead = value
+		self.trail = value
+
+	@property
+	def lead(self):
+		return self.pattern[1][0]
+
+	@lead.setter
+	def lead(self, value):
 		self.pattern[1][0] = value
+
+	@property
+	def trail(self):
+		return self.pattern[3][0]
+
+	@trail.setter
+	def trail(self, value):
 		self.pattern[3][0] = value
 
 	@property
@@ -270,6 +288,20 @@ class Pulse(Waveform):
 	def voltage(self, value):
 		self.pattern[1][1] = value
 		self.pattern[2][1] = value
+
+	@property
+	def init_voltage(self):
+		return self.pattern[0][1]
+
+	@init_voltage.setter
+	def init_voltage(self, value):
+		if self.pattern[0][1] == self.pattern[3][1]:
+			self.pattern[3][1] = value
+		
+		if self.pattern[0][1] == self.pattern[4][1]:
+			self.pattern[4][1] = value
+
+		self.pattern[0][1] = value
 
 #############
 # DC Waveform
