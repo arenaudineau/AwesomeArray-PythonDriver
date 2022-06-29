@@ -37,16 +37,4 @@ sudo usermod -aG dialout $USER
 
 ## Usage
 ### Wiki
-Here is a complete wiki on how to use this library: [wiki](https://github.com/arenaudineau/AwesomeArray-PythonDriver/wiki).
-
-### Awesome Array Driver
-The high-level driver intended to be used.  
-See [`demo/aadriver.ipynb`](demo/aadriver.ipynb) for a demo. 
-
-### Microcontroller Driver
-This should not be used unless a low-level change with the µc is needed for the `aad`.  
-See [`demo/mcdriver.ipynb`](demo/mcdriver.ipynb) for a demo.
-
-### B1530 Library
-This should not be used unless a low-level change with the B1530 is needed for the `aad`.  
-See [`demo/B1530lib.ipynb`](demo/B1530lib.ipynb) for a demo.
+Here is a complete [wiki](https://github.com/arenaudineau/AwesomeArray-PythonDriver/wiki) on how to use this library.
