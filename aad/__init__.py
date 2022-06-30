@@ -51,8 +51,6 @@ class AwesomeArrayDriver:
 		except Exception as e:
 			self._mcd.ser.close()
 			raise e
-
-		self._last_wgfu_config = -1
 		
 		self.reset_state()
 
@@ -60,8 +58,10 @@ class AwesomeArrayDriver:
 		"""
 		Resets the state of the driver, to run after exception catching for example.
 		"""
-		self._mcd.flush_input()
-		self._mcd.ack_mode(mcd.ACK_ALL)
+		self._mcd.flush_input() # Flush any remaning inputs stuck in the buffer
+		self._mcd.ack_mode(mcd.ACK_ALL) # Enable ACK for every procedure commands
+		self._last_wgfu_config = -1 # Initially, no WGFMU Configuration
+
 		self._mcd.set_cs(mcd.CS.CARAC_EN, State.SET) # Enable CARAC MODE
 
 	##### µC-RELATED METHODS #####
