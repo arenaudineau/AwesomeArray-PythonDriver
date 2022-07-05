@@ -6,7 +6,6 @@ setup(
 	packages=find_packages(),
 	install_requires=[
 		'pyserial',
-		'pyvisa',
-		'pandas',
+		'B1530Lib @ https://github.com/arenaudineau/B1530Lib/archive/refs/heads/main.zip'
 	]
 )
