@@ -1,7 +1,8 @@
 from typing import List
 
-from aad import mcd, B1530Lib
+from aad import mcd
 from aad.mcd import SR, SR_COUNT, SR_WORD_SIZE, SR_LIST, State
+import B1530Lib
 
 # Utils export from mcd
 print_ports = mcd.MCDriver.print_ports
