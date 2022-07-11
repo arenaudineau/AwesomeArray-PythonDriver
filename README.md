@@ -1,6 +1,6 @@
 # Awesome Array Python Driver
 
-Python drivers to control the Awesome Array @ C2N.  
+Python drivers to control the Awesome Array, developped @ C2N.  
 
 ## Installation
 This library requires:  
@@ -13,28 +13,19 @@ This library requires:
 ### Global installation
 1. Download and install the NI-VISA drivers
 2. `B1530driver.py` and `B1530ErrorModule.py` are licensed and cannot be shared on GitHub, they are therefore missing on this repo.  
-You must copy them at the location `extlibs/B1530Driver`, aside the `__init__.py` file.  
-3. You can then go back to the root of this repo and run the command `pip install .`. The script should download the Python library and install `aad` globally.
+You must add their path to the environment variable PYTHONPATH. See the end of this README for instructions.  
+3. Run the command `pip install https://github.com/arenaudineau/AwesomeArray-PythonDriver/archive/refs/heads/main.zip`
 
 You can now use `aad` as a regular library, by using `import aad` in any directory on the computer.
 
 ### Extending the driver
-Same as previously but use `pip install -e .` not to have to exec the command at every change.  After the extension is done, you can `pip install .`.
+You need to create a fork of this repo, `git clone` your fork onto your local computer and run `pip install -e .` in the root of the downloaded folder.  
+You can know use `aad` in any directory of the computer and any changes in the sources will be taken into account. 
 
----
-#### **Linux users only**
-Only `mcdriver` is available on Linux. In order to test it out, you will need to add your user to the `dialout` group:  
-```bash
-sudo usermod -aG dialout $USER
-```
+### Adding path to PYTHONPATH
+`Win + R` -> Write "SystemPropertiesAdvanced", Enter => Environment Variables... => User Variables for XXX ;  
+If `PYTHONPATH` exists, edit it and append the path to B1530driver files ;  
+Otherwise, create it.
 
-
-
-## Library Architecture
-<p align="center">
-	<img src="misc/aad_arch.png?raw=true" alt="Library Architecture Diagram" />
-</p>
-
-## Usage
-### Wiki
-Here is a complete [wiki](https://github.com/arenaudineau/AwesomeArray-PythonDriver/wiki) on how to use this library.
+# Wiki
+Here is a complete [wiki](../../wiki) on how to use this library.
