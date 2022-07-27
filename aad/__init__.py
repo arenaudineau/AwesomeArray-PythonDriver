@@ -10,9 +10,10 @@ print_visa_dev = B1530Lib.print_devices
 
 ###############################
 # WGFMU Configuration Constants
-WGFMU_CONFIG_SET  = 0 # Set or Reset operation
-WGFMU_CONFIG_FORM = 1 # Form operation
-WGFMU_CONFIG_READ = 2 # Read operation
+WGFMU_CONFIG_SET   = 0 # Set operation
+WGFMU_CONFIG_RESET = 1 # Reset operation
+WGFMU_CONFIG_FORM  = 2 # Form operation
+WGFMU_CONFIG_READ  = 3 # Read operation
 
 ##########################
 # class AwesomeArrayDriver
@@ -62,6 +63,40 @@ class AwesomeArrayDriver:
 		self._mcd.flush_input() # Flush any remaning inputs stuck in the buffer
 		self._mcd.ack_mode(mcd.ACK_ALL) # Enable ACK for every procedure commands
 		self._last_wgfu_config = -1 # Initially, no WGFMU Configuration
+		
+		self.wgfmu_configs = {
+			WGFMU_CONFIG_SET: {
+				'voltage': 2,
+				'mosfet_voltage': 5,
+				'length': 1e-5,
+				'interval': 5e-3,
+				'edges': 5e-7,
+			},
+
+			WGFMU_CONFIG_RESET: {
+				'voltage': 2,
+				'mosfet_voltage': 5,
+				'length': 1e-5,
+				'interval': 5e-3,
+				'edges': 5e-7,
+			},
+			
+			WGFMU_CONFIG_FORM: {
+				'voltage': 3,
+				'mosfet_voltage': 5,
+				'length': 1e-5,
+				'interval': 5e-3,
+				'edges': 5e-7,
+			},
+			
+			WGFMU_CONFIG_READ: {
+				'voltage': 1,
+				'mosfet_voltage': 5,
+				'length': 1e-5,
+				'interval': 5e-3,
+				'edges': 5e-7,
+			},
+		}
 
 		self._mcd.set_cs(mcd.CS.CARAC_EN, State.SET) # Enable CARAC MODE
 
@@ -170,9 +205,10 @@ class AwesomeArrayDriver:
 		
 		Parameters:
 			config: The configuration to apply:
-				* WGFMU_CONFIG_SET:  Configures pulses for memristor Set/Reset ;
-				* WGFMU_CONFIG_FORM: Configures pulses for memristor forming ;
-				* WGFMU_CONFIG_READ: Configures pulses and meas. for memristor value reading ;
+				* WGFMU_CONFIG_SET:   Configures pulses for memristor Set ;
+				* WGFMU_CONFIG_RESET: Configures pulses for memristor Reset ;
+				* WGFMU_CONFIG_FORM:  Configures pulses for memristor forming ;
+				* WGFMU_CONFIG_READ:  Configures pulses and meas. for memristor value reading ;
 				
 		Details:
 			b1530.chan[1] = Vin1_row (= GND) ;
@@ -182,39 +218,16 @@ class AwesomeArrayDriver:
 		"""
 		if self._last_wgfu_config == config:
 			return
-		
 		self._last_wgfu_config = config
 
 		#self._b1530.reset_configuration()
 		chan = self._b1530.chan
 
-		# TODO: make this a list/dict?
-		if config == WGFMU_CONFIG_SET:			
-			voltage        = 2
-			mosfet_voltage = 5
-
-			length     = 1e-5
-			interval   = 5e-3
-			edges      = length / 50
-		
-		elif config == WGFMU_CONFIG_FORM:
-			voltage         = 3
-			mosfet_voltage  = 5
-
-			length     = 1e-5
-			interval   = length / 10
-			edges      = length / 50
-
-		elif config == WGFMU_CONFIG_READ:
-			voltage        = 1
-			mosfet_voltage = 5
-
-			length     = 1e-5
-			interval   = length / 10
-			edges      = length / 50
-
-		else:
-			raise ValueError("Unknown WGFMU config")
+		voltage        = self.wgfmu_configs[config]['voltage']
+		mosfet_voltage = self.wgfmu_configs[config]['mosfet_voltage']
+		length         = self.wgfmu_configs[config]['length']
+		interval       = self.wgfmu_configs[config]['interval']
+		edges          = self.wgfmu_configs[config]['edges']
 			
 		chan[3].wave = B1530Lib.Pulse(voltage = mosfet_voltage, interval = interval + length, edges = edges, length = length)
 		chan[4].wave = B1530Lib.Pulse(voltage = voltage, interval = interval, edges = edges, length = length * 2)
@@ -230,7 +243,6 @@ class AwesomeArrayDriver:
 			chan[2].meas = chan[4].measure(mode='current', range='10mA', sample_interval=interval, average_time=interval, ignore_gnd=True) # Do not measure current when the pulse is at GND
 		else:
 			chan[2].wave = B1530Lib.Waveform([[0, 0], [duration, 0]]) # Force to GND
-			
 
 		self._b1530.configure()
 
@@ -259,7 +271,7 @@ class AwesomeArrayDriver:
 			bar: If True, resets the complementary memristor
 		"""
 		self.configure_sr(col, row, bar, set=False)
-		self.configure_wgfmu(WGFMU_CONFIG_SET)
+		self.configure_wgfmu(WGFMU_CONFIG_RESET)
 		self._b1530.exec()
 		
 
